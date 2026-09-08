@@ -1,0 +1,7 @@
+bin/
+obj/
+*.user
+.vs/
+# Uploaded product images are runtime data, not source.
+SportMate.API/wwwroot/uploads/*
+!SportMate.API/wwwroot/uploads/.gitkeep
