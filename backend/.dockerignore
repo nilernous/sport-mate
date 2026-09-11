@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+.config/
+scripts/
+README.md
+Dockerfile
+global.json
+.dockerignore
+# Runtime uploads are not part of the image.
+SportMate.API/wwwroot/uploads/*
+!SportMate.API/wwwroot/uploads/.gitkeep
