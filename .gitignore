@@ -1,0 +1,27 @@
+# Repository-wide ignores. backend/ and mobile/ have their own .gitignore for build output.
+
+# IDEs and editors
+.idea/
+.vs/
+.vscode/
+*.iml
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment and secrets (infra/.env.example is the committed template)
+.env
+.env.*
+!.env.example
+
+# Office lock files (e.g. while docs/docx/*.docx is open in Word)
+~$*
+
+# Logs
+*.log
+
+# Backup copies (e.g. pubspec.lock.bak)
+*.bak
