@@ -3,6 +3,7 @@ using Microsoft.OpenApi.Models;
 using SportMate.API.Middleware;
 using SportMate.Application;
 using SportMate.Infrastructure;
+using SportMate.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors();
+
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<DataSeeder>().MigrateAndSeedAsync();
 }
 else
 {
