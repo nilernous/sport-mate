@@ -1,0 +1,55 @@
+# Local development stack: SQL Server + Sport Mate API.
+#
+#   cd infra
+#   cp .env.example .env        # optional: change passwords / ports
+#   docker compose up -d --build
+#
+# API:     http://localhost:5005/swagger   (same port the mobile app uses by default)
+# Database: localhost,14330  (user "sa", password MSSQL_SA_PASSWORD)
+
+name: sportmate
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sportmate-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-SportMate@Dev2026}
+    ports:
+      # 14330 avoids clashing with a SQL Server already installed on the host.
+      - "${SQL_PORT:-14330}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: sportmate-api:dev
+    container_name: sportmate-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      # Development: Swagger on, migrations applied and demo data seeded on startup.
+      # The JWT key and demo passwords come from appsettings.Development.json.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=SportMateDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-SportMate@Dev2026};TrustServerCertificate=True"
+    ports:
+      - "${API_PORT:-5005}:8080"
+    volumes:
+      - api-uploads:/app/wwwroot/uploads
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data:
+  api-uploads:
