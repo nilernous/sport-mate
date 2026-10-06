@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SportMate.Application.Interfaces;
+using SportMate.Infrastructure.Identity;
 using SportMate.Infrastructure.Persistence;
 
 namespace SportMate.Infrastructure;
@@ -15,6 +16,10 @@ public static class DependencyInjection
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<DataSeeder>();
+
+        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.Section));
+        services.AddSingleton<ITokenService, TokenService>();
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
         return services;
     }
 }
