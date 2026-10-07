@@ -11,4 +11,6 @@ class ApiEndpoints {
 
   // Current user
   static const me = '/users/me';
+  static const myPassword = '/users/me/password';
+  static const myAddresses = '/users/me/addresses';
 }

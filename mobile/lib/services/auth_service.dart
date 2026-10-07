@@ -30,6 +30,17 @@ class AuthService {
       '${(await _api.post<Json>(ApiEndpoints.resetPassword, data: {'token': token.trim(), 'newPassword': newPassword}))['message']}';
 
   Future<AppUser> me() async => AppUser.fromJson(await _api.get<Json>(ApiEndpoints.me));
+
+  Future<AppUser> updateProfile({required String fullName, String? phoneNumber}) async =>
+      AppUser.fromJson(await _api.put<Json>(ApiEndpoints.me, data: {
+        'fullName': fullName.trim(),
+        'phoneNumber': phoneNumber?.trim().isEmpty == true ? null : phoneNumber?.trim(),
+      }));
+
+  /// Returns a fresh session: the server revokes all older tokens on password change.
+  Future<AuthResult> changePassword(String currentPassword, String newPassword) async =>
+      AuthResult.fromJson(await _api.put<Json>(ApiEndpoints.myPassword,
+          data: {'currentPassword': currentPassword, 'newPassword': newPassword}));
 }
 
 final authServiceProvider = Provider((ref) => AuthService(ref.watch(apiClientProvider)));

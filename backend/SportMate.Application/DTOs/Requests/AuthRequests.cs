@@ -50,3 +50,45 @@ public class ResetPasswordRequest
     [Required, RegularExpression(PasswordPolicy.Pattern, ErrorMessage = PasswordPolicy.Message)]
     public string NewPassword { get; init; } = string.Empty;
 }
+
+public class ChangePasswordRequest
+{
+    [Required]
+    public string CurrentPassword { get; init; } = string.Empty;
+
+    [Required, RegularExpression(PasswordPolicy.Pattern, ErrorMessage = PasswordPolicy.Message)]
+    public string NewPassword { get; init; } = string.Empty;
+}
+
+/// <summary>Only these fields are editable by the user themself (BR-011).</summary>
+public class UpdateProfileRequest
+{
+    [Required, StringLength(100, MinimumLength = 2)]
+    public string FullName { get; init; } = string.Empty;
+
+    [Phone, StringLength(20)]
+    public string? PhoneNumber { get; init; }
+}
+
+public class AddressRequest
+{
+    [Required, StringLength(100)]
+    public string RecipientName { get; init; } = string.Empty;
+
+    [Required, Phone, StringLength(20)]
+    public string PhoneNumber { get; init; } = string.Empty;
+
+    [Required, StringLength(255)]
+    public string AddressLine { get; init; } = string.Empty;
+
+    [Required, StringLength(100)]
+    public string Ward { get; init; } = string.Empty;
+
+    [Required, StringLength(100)]
+    public string District { get; init; } = string.Empty;
+
+    [Required, StringLength(100)]
+    public string City { get; init; } = string.Empty;
+
+    public bool IsDefault { get; init; }
+}

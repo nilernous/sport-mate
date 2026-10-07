@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
+import '../../screens/profile/account_screens.dart';
+import '../../screens/profile/address_screens.dart';
+import 'app_shell.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -65,6 +68,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/register', builder: (_, s) => RegisterScreen(from: s.uri.queryParameters['from'])),
       GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(path: '/reset-password', builder: (_, s) => ResetPasswordScreen(token: s.uri.queryParameters['token'])),
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => AppShell(shell: shell),
+        branches: [
+          StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
+        ],
+      ),
+
+      // Customer
+      page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
+      page('/addresses/new', (_) => const AddressFormScreen()),
+      page('/account/edit', (_) => const EditProfileScreen()),
+      page('/account/password', (_) => const ChangePasswordScreen()),
     ],
   );
 });

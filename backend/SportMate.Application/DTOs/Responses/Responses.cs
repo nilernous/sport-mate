@@ -11,3 +11,7 @@ public record UserDto(int Id, string FullName, string Email, string? PhoneNumber
 public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserDto User);
 
 public record MessageResponse(string Message);
+
+public record AddressDto(
+    int Id, string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District,
+    string City, bool IsDefault);

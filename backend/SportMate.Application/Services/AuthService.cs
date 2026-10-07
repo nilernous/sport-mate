@@ -108,12 +108,45 @@ public class AuthService(
         await db.SaveChangesAsync(ct);
     }
 
+    // UC-006: returns a fresh token because all older ones are revoked.
+    public async Task<AuthResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request, CancellationToken ct)
+    {
+        var user = await GetActiveUserAsync(userId, ct);
+        if (!hasher.Verify(user, user.PasswordHash, request.CurrentPassword))
+            throw AppException.BadRequest("Current password is incorrect.", "currentPassword");
+        if (request.CurrentPassword == request.NewPassword)
+            throw AppException.BadRequest("New password have to be different from the current password.", "newPassword");
+
+        SetPassword(user, request.NewPassword);
+        await db.SaveChangesAsync(ct);
+        return CreateAuthResponse(user);
+    }
+
+    // UC-007
+    public async Task<UserDto> GetProfileAsync(int userId, CancellationToken ct) =>
+        (await GetActiveUserAsync(userId, ct)).ToDto();
+
+    // UC-008
+    public async Task<UserDto> UpdateProfileAsync(int userId, UpdateProfileRequest request, CancellationToken ct)
+    {
+        var user = await GetActiveUserAsync(userId, ct);
+        user.FullName = request.FullName.Trim();
+        user.PhoneNumber = TextNormalizer.Clean(request.PhoneNumber);
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return user.ToDto();
+    }
+
     private void SetPassword(User user, string password)
     {
         user.PasswordHash = hasher.Hash(user, password);
         user.TokenVersion++;
         user.UpdatedAt = DateTime.UtcNow;
     }
+
+    private async Task<User> GetActiveUserAsync(int userId, CancellationToken ct) =>
+        await db.Users.SingleOrDefaultAsync(u => u.Id == userId && u.IsActive, ct)
+        ?? throw AppException.Unauthorized("Account is not available.");
 
     private AuthResponse CreateAuthResponse(User user)
     {

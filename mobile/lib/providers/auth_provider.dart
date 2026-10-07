@@ -55,6 +55,12 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> register({required String fullName, required String email, required String password, String? phoneNumber}) async =>
       _start(await _service.register(fullName: fullName, email: email, password: password, phoneNumber: phoneNumber));
 
+  Future<void> changePassword(String current, String next) async => _start(await _service.changePassword(current, next));
+
+  Future<void> updateProfile({required String fullName, String? phoneNumber}) async {
+    state = AuthState.authenticated(await _service.updateProfile(fullName: fullName, phoneNumber: phoneNumber));
+  }
+
   Future<void> logout() async {
     try {
       await _service.logout();
