@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../screens/admin/admin_home_screen.dart';
+import '../../screens/admin/catalog_setup_screen.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
 import '../../screens/profile/account_screens.dart';
@@ -72,6 +74,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminHomeScreen())]),
         ],
       ),
 
@@ -80,6 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       page('/addresses/new', (_) => const AddressFormScreen()),
       page('/account/edit', (_) => const EditProfileScreen()),
       page('/account/password', (_) => const ChangePasswordScreen()),
+
+      // Staff & Admin
+      page('/admin/catalog-setup', (_) => const CatalogSetupScreen()),
     ],
   );
 });
