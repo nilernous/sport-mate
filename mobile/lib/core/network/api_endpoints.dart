@@ -19,4 +19,8 @@ class ApiEndpoints {
   static String adminCategory(int id) => '/admin/categories/$id';
   static const adminBrands = '/admin/brands';
   static String adminBrand(int id) => '/admin/brands/$id';
+  static const adminProducts = '/admin/products';
+  static String adminProduct(int id) => '/admin/products/$id';
+  static String adminProductStatus(int id) => '/admin/products/$id/status';
+  static String adminProductVariants(int id) => '/admin/products/$id/variants';
 }

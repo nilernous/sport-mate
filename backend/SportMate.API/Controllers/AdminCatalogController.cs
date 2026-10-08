@@ -12,7 +12,9 @@ namespace SportMate.API.Controllers;
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminCatalogController(
-    CategoryBrandService categories) : ApiControllerBase
+    CategoryBrandService categories,
+    ProductService products,
+    VariantService variants) : ApiControllerBase
 {
     // ---------- Categories ----------
 
@@ -57,4 +59,36 @@ public class AdminCatalogController(
     [HttpDelete("brands/{id:int}")]
     public async Task<ActionResult<DeleteResultDto>> DeleteBrand(int id, CancellationToken ct) =>
         Ok(await categories.DeleteBrandAsync(id, ct));
+
+    // ---------- Products ----------
+
+    [HttpGet("products")]
+    public async Task<ActionResult<PagedResult<ProductSummaryDto>>> ListProducts([FromQuery] AdminProductQuery query, CancellationToken ct) =>
+        Ok(await products.SearchAdminAsync(query, ct));
+
+    [HttpGet("products/{id:int}")]
+    public async Task<ActionResult<ProductDetailDto>> GetProduct(int id, CancellationToken ct) =>
+        Ok(await products.GetAdminAsync(id, ct));
+
+    [HttpPost("products")]
+    public async Task<ActionResult<ProductDetailDto>> CreateProduct(ProductRequest request, CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await products.CreateAsync(request, ct));
+
+    [HttpPut("products/{id:int}")]
+    public async Task<ActionResult<ProductDetailDto>> UpdateProduct(int id, ProductRequest request, CancellationToken ct) =>
+        Ok(await products.UpdateAsync(id, request, ct));
+
+    [HttpPatch("products/{id:int}/status")]
+    public async Task<ActionResult<ProductDetailDto>> SetProductStatus(int id, ProductStatusRequest request, CancellationToken ct) =>
+        Ok(await products.SetStatusAsync(id, request.IsActive!.Value, ct));
+
+    [HttpDelete("products/{id:int}")]
+    public async Task<ActionResult<DeleteResultDto>> DeleteProduct(int id, CancellationToken ct) =>
+        Ok(await products.DeleteAsync(id, ct));
+
+    // ---------- Variants ----------
+
+    [HttpPost("products/{productId:int}/variants")]
+    public async Task<ActionResult<VariantDto>> CreateVariant(int productId, CreateVariantRequest request, CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await variants.CreateVariantAsync(CurrentUserId, productId, request, ct));
 }

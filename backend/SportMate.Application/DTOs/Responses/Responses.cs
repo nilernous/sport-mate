@@ -30,3 +30,18 @@ public record DeleteResultDto(string Action, string Message)
     public static DeleteResultDto Deactivated(string resource, string reason) =>
         new("Deactivated", $"{resource} is referenced by {reason}, so it was deactivated instead of deleted.");
 }
+
+public record ProductSummaryDto(
+    int Id, string Name, string CategoryName, string BrandName, decimal Price, string? ImageUrl,
+    double AverageRating, int ReviewCount, bool InStock, bool IsActive);
+
+public record VariantDto(
+    int Id, int ProductId, string Sku, string Size, string Color, decimal Price, int StockQuantity, bool InStock,
+    bool IsActive);
+
+public record ImageDto(int Id, int ProductId, string Url, string? AltText, int DisplayOrder, bool IsPrimary);
+
+public record ProductDetailDto(
+    int Id, string Name, string? Description, int CategoryId, string CategoryName, int BrandId, string BrandName,
+    decimal BasePrice, decimal Price, bool IsActive, double AverageRating, int ReviewCount,
+    IReadOnlyList<ImageDto> Images, IReadOnlyList<VariantDto> Variants, DateTime CreatedAt, DateTime UpdatedAt);

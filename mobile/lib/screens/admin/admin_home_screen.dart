@@ -18,6 +18,7 @@ class AdminHomeScreen extends ConsumerWidget {
   const AdminHomeScreen({super.key});
 
   static const _items = [
+    _AdminItem(Icons.inventory_2_outlined, 'Products', 'Products & variants', '/admin/products'),
     _AdminItem(Icons.category_outlined, 'Categories & brands', 'Organise the catalog', '/admin/catalog-setup'),
   ];
 
