@@ -31,6 +31,14 @@ public class ProductService(IApplicationDbContext db)
         public DateTime CreatedAt { get; init; }
     }
 
+    /// <summary>Products a customer can see and buy (BR-014).</summary>
+    public IQueryable<Product> PublicProducts =>
+        db.Products.Where(p => p.IsActive && p.Category.IsActive && p.Brand.IsActive);
+
+    // UC-038, UC-040, UC-041, UC-042
+    public Task<PagedResult<ProductSummaryDto>> SearchPublicAsync(ProductQuery q, CancellationToken ct) =>
+        SearchAsync(PublicProducts, q, publicOnly: true, ct);
+
     // UC-027
     public Task<PagedResult<ProductSummaryDto>> SearchAdminAsync(AdminProductQuery q, CancellationToken ct)
     {
@@ -104,6 +112,16 @@ public class ProductService(IApplicationDbContext db)
             CreatedAt = p.CreatedAt,
         });
 
+    // UC-039
+    public async Task<ProductDetailDto> GetPublicAsync(int id, CancellationToken ct)
+    {
+        var product = await PublicProducts.AsNoTracking().AsSplitQuery()
+            .Include(p => p.Category).Include(p => p.Brand)
+            .Include(p => p.Images).Include(p => p.Variants.Where(v => v.IsActive))
+            .SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw AppException.NotFound("Product");
+        return await ToDetailAsync(product, ct);
+    }
+
     // UC-027
     public async Task<ProductDetailDto> GetAdminAsync(int id, CancellationToken ct)
     {
@@ -112,6 +130,22 @@ public class ProductService(IApplicationDbContext db)
             .Include(p => p.Images).Include(p => p.Variants)
             .SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw AppException.NotFound("Product");
         return await ToDetailAsync(product, ct);
+    }
+
+    public async Task<FilterOptionsDto> GetFilterOptionsAsync(CancellationToken ct)
+    {
+        var categories = await db.Categories.AsNoTracking().Where(c => c.IsActive).OrderBy(c => c.Name)
+            .Select(c => new CategoryDto(c.Id, c.Name, c.Description, c.IsActive, c.Products.Count(p => p.IsActive)))
+            .ToListAsync(ct);
+        var brands = await db.Brands.AsNoTracking().Where(b => b.IsActive).OrderBy(b => b.Name)
+            .Select(b => new BrandDto(b.Id, b.Name, b.Description, b.LogoUrl, b.IsActive, b.Products.Count(p => p.IsActive)))
+            .ToListAsync(ct);
+        var variants = PublicProducts.SelectMany(p => p.Variants).Where(v => v.IsActive);
+        var sizes = await variants.Select(v => v.Size).Distinct().ToListAsync(ct);
+        var colors = await variants.Select(v => v.Color).Distinct().OrderBy(c => c).ToListAsync(ct);
+        var minPrice = await variants.MinAsync(v => (decimal?)v.Price, ct) ?? 0;
+        var maxPrice = await variants.MaxAsync(v => (decimal?)v.Price, ct) ?? 0;
+        return new FilterOptionsDto(categories, brands, SortSizes(sizes), colors, minPrice, maxPrice);
     }
 
     // UC-026
@@ -205,4 +239,7 @@ public class ProductService(IApplicationDbContext db)
         if (index >= 0) return index;
         return decimal.TryParse(size, out var n) ? 100 + (int)(n * 10) : 10_000;
     }
+
+    private static List<string> SortSizes(IEnumerable<string> sizes) =>
+        sizes.OrderBy(SizeRank).ThenBy(s => s).ToList();
 }

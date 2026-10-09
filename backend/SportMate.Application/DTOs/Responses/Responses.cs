@@ -45,3 +45,7 @@ public record ProductDetailDto(
     int Id, string Name, string? Description, int CategoryId, string CategoryName, int BrandId, string BrandName,
     decimal BasePrice, decimal Price, bool IsActive, double AverageRating, int ReviewCount,
     IReadOnlyList<ImageDto> Images, IReadOnlyList<VariantDto> Variants, DateTime CreatedAt, DateTime UpdatedAt);
+
+public record FilterOptionsDto(
+    IReadOnlyList<CategoryDto> Categories, IReadOnlyList<BrandDto> Brands, IReadOnlyList<string> Sizes,
+    IReadOnlyList<string> Colors, decimal MinPrice, decimal MaxPrice);

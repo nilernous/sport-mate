@@ -11,7 +11,7 @@ namespace SportMate.API.Controllers;
 /// <summary>Public catalog: only active products, categories and brands are exposed (BR-002, BR-014).</summary>
 [Route("api/v1")]
 [AllowAnonymous]
-public class CatalogController(CategoryBrandService categories) : ApiControllerBase
+public class CatalogController(CategoryBrandService categories, ProductService products) : ApiControllerBase
 {
     [HttpGet("categories")]
     public async Task<ActionResult<IReadOnlyList<CategoryDto>>> ListCategories([FromQuery] CatalogListQuery query, CancellationToken ct) =>
@@ -28,4 +28,19 @@ public class CatalogController(CategoryBrandService categories) : ApiControllerB
     [HttpGet("brands/{id:int}")]
     public async Task<ActionResult<BrandDto>> GetBrand(int id, CancellationToken ct) =>
         Ok(await categories.GetBrandAsync(id, publicOnly: true, ct));
+
+    /// <summary>UC-038 / UC-040 / UC-041 / UC-042 Browse, search, filter and sort products.</summary>
+    [HttpGet("products")]
+    public async Task<ActionResult<PagedResult<ProductSummaryDto>>> ListProducts([FromQuery] ProductQuery query, CancellationToken ct) =>
+        Ok(await products.SearchPublicAsync(query, ct));
+
+    /// <summary>Values for the filter UI: categories, brands, sizes, colors and price range.</summary>
+    [HttpGet("products/filters")]
+    public async Task<ActionResult<FilterOptionsDto>> GetFilterOptions(CancellationToken ct) =>
+        Ok(await products.GetFilterOptionsAsync(ct));
+
+    /// <summary>UC-039 View product details.</summary>
+    [HttpGet("products/{id:int}")]
+    public async Task<ActionResult<ProductDetailDto>> GetProduct(int id, CancellationToken ct) =>
+        Ok(await products.GetPublicAsync(id, ct));
 }

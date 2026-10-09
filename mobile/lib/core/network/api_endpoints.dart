@@ -14,6 +14,13 @@ class ApiEndpoints {
   static const myPassword = '/users/me/password';
   static const myAddresses = '/users/me/addresses';
 
+  // Public catalog
+  static const categories = '/categories';
+  static const brands = '/brands';
+  static const products = '/products';
+  static const productFilters = '/products/filters';
+  static String product(int id) => '/products/$id';
+
   // Staff & Admin (shared /admin/* paths)
   static const adminCategories = '/admin/categories';
   static String adminCategory(int id) => '/admin/categories/$id';

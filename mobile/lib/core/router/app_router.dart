@@ -8,6 +8,9 @@ import '../../screens/admin/catalog_setup_screen.dart';
 import '../../screens/admin/product_admin_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
+import '../../screens/home/home_screen.dart';
+import '../../screens/products/product_detail_screen.dart';
+import '../../screens/products/product_list_screen.dart';
 import '../../screens/profile/account_screens.dart';
 import '../../screens/profile/address_screens.dart';
 import 'app_shell.dart';
@@ -74,10 +77,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
+          StatefulShellBranch(routes: [GoRoute(path: '/home', builder: (_, _) => const HomeScreen())]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/shop',
+              builder: (_, s) => ProductListScreen(
+                key: ValueKey(s.uri.query),
+                initialCategoryId: int.tryParse(s.uri.queryParameters['categoryId'] ?? ''),
+                initialBrandId: int.tryParse(s.uri.queryParameters['brandId'] ?? ''),
+                initialKeyword: s.uri.queryParameters['keyword'],
+                initialSort: s.uri.queryParameters['sort'],
+              ),
+            ),
+          ]),
           StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminHomeScreen())]),
         ],
       ),
+
+      // Catalog
+      page('/products/:id', (s) => ProductDetailScreen(productId: idParam(s))),
 
       // Customer
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/validators.dart';
 import '../../models/catalog.dart';
 import '../../models/common.dart';
+import '../../providers/catalog_providers.dart';
 import '../../services/admin_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/state_views.dart';
@@ -63,6 +64,9 @@ class _CatalogListState extends ConsumerState<_CatalogList> with AutomaticKeepAl
   }
 
   void _reload() {
+    // Public lists (shop filters, home) also change.
+    ref.invalidate(categoriesProvider);
+    ref.invalidate(filterOptionsProvider);
     setState(() => _future = _load());
   }
 
