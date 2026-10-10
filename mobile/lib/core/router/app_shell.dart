@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/shopping_providers.dart';
 
 /// Branch indexes of the shell route in app_router.dart.
 abstract final class ShellBranch {
@@ -32,7 +33,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    const cartCount = 0;
+    final cartCount = ref.watch(cartCountProvider);
 
     final destinations = [
       if (auth.isStaffOrAdmin) const _Destination(ShellBranch.admin, Icons.dashboard_outlined, Icons.dashboard, 'Manage'),

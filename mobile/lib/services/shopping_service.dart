@@ -3,7 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_endpoints.dart';
 import '../models/common.dart';
+import '../models/shopping.dart';
 import '../models/user.dart';
+
+class CartService {
+  CartService(this._api);
+
+  final ApiClient _api;
+
+  Future<Cart> get() async => Cart.fromJson(await _api.get<Json>(ApiEndpoints.cart));
+
+  Future<Cart> add(int variantId, int quantity) async =>
+      Cart.fromJson(await _api.post<Json>(ApiEndpoints.cartItems, data: {'variantId': variantId, 'quantity': quantity}));
+
+  Future<Cart> update(int itemId, int quantity) async =>
+      Cart.fromJson(await _api.patch<Json>(ApiEndpoints.cartItem(itemId), data: {'quantity': quantity}));
+
+  Future<Cart> remove(int itemId) async => Cart.fromJson(await _api.delete<Json>(ApiEndpoints.cartItem(itemId)));
+
+  Future<void> clear() => _api.delete<void>(ApiEndpoints.cart);
+}
 
 class AddressService {
   AddressService(this._api);
@@ -16,4 +35,5 @@ class AddressService {
   Future<Address> create(Json data) async => Address.fromJson(await _api.post<Json>(ApiEndpoints.myAddresses, data: data));
 }
 
+final cartServiceProvider = Provider((ref) => CartService(ref.watch(apiClientProvider)));
 final addressServiceProvider = Provider((ref) => AddressService(ref.watch(apiClientProvider)));

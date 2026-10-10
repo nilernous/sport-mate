@@ -6,6 +6,7 @@ import '../../core/utils/formatters.dart';
 import '../../models/catalog.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
+import '../../providers/shopping_providers.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/state_views.dart';
 
@@ -33,6 +34,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     return null;
   }
 
+  void _requireLogin() => context.push('/login?from=${Uri.encodeComponent('/products/${widget.productId}')}');
+
+  Future<void> _addToCart(ProductDetail p, {bool buyNow = false}) async {
+    final auth = ref.read(authProvider);
+    if (!auth.isLoggedIn) return _requireLogin();
+    final variant = _selected(p);
+    if (variant == null) {
+      showMessage(context, 'Please choose a color and size.');
+      return;
+    }
+    final ok = await runGuarded(context, () => ref.read(cartProvider.notifier).add(variant.id, _quantity),
+        success: buyNow ? null : 'Added to cart');
+    if (ok && buyNow && mounted) context.go('/cart');
+  }
+
   @override
   Widget build(BuildContext context) {
     final product = ref.watch(productDetailProvider(widget.productId));
@@ -50,6 +66,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         onRetry: () => ref.invalidate(productDetailProvider(widget.productId)),
         data: (p) => _buildBody(context, p),
       ),
+      bottomNavigationBar: product.value == null || auth.isStaffOrAdmin ? null : _buildBottomBar(product.value!),
     );
   }
 
@@ -153,4 +170,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       const SizedBox(height: 16),
     ]);
   }
+
+  Widget _buildBottomBar(ProductDetail p) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(children: [
+            Expanded(child: BusyButton(label: 'Add to cart', icon: Icons.add_shopping_cart, outlined: true, onPressed: p.variants.isEmpty ? null : () => _addToCart(p))),
+            const SizedBox(width: 12),
+            Expanded(child: BusyButton(label: 'Buy now', onPressed: p.variants.isEmpty ? null : () => _addToCart(p, buyNow: true))),
+          ]),
+        ),
+      );
 }

@@ -8,6 +8,7 @@ import '../../screens/admin/catalog_setup_screen.dart';
 import '../../screens/admin/product_admin_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
+import '../../screens/cart/cart_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/products/product_detail_screen.dart';
 import '../../screens/products/product_list_screen.dart';
@@ -90,6 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ),
           ]),
+          StatefulShellBranch(routes: [GoRoute(path: '/cart', builder: (_, _) => const CartScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/account', builder: (_, _) => const AccountScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminHomeScreen())]),
         ],

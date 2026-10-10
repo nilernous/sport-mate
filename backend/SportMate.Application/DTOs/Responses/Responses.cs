@@ -49,3 +49,12 @@ public record ProductDetailDto(
 public record FilterOptionsDto(
     IReadOnlyList<CategoryDto> Categories, IReadOnlyList<BrandDto> Brands, IReadOnlyList<string> Sizes,
     IReadOnlyList<string> Colors, decimal MinPrice, decimal MaxPrice);
+
+// ---------- Cart & checkout ----------
+
+public record CartItemDto(
+    int Id, int VariantId, int ProductId, string ProductName, string Sku, string Size, string Color,
+    string? ImageUrl, decimal UnitPrice, int Quantity, decimal LineTotal, int AvailableStock, bool IsAvailable);
+
+/// <summary>Cart prices are indicative only (BR-031).</summary>
+public record CartDto(IReadOnlyList<CartItemDto> Items, int TotalQuantity, decimal EstimatedSubtotal);
