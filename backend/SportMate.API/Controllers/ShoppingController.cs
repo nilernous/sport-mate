@@ -39,3 +39,30 @@ public class CartController(CartService cart) : ApiControllerBase
         return NoContent();
     }
 }
+
+[Route("api/v1")]
+[Authorize(Roles = Roles.Customer)]
+public class CheckoutController(OrderService orders) : ApiControllerBase
+{
+    /// <summary>UC-051 Preview totals. Nothing is saved.</summary>
+    [HttpPost("checkout/preview")]
+    public async Task<ActionResult<CheckoutPreviewDto>> Preview(CheckoutPreviewRequest request, CancellationToken ct) =>
+        Ok(await orders.PreviewAsync(CurrentUserId, request, ct));
+}
+
+[Route("api/v1/orders")]
+[Authorize(Roles = Roles.Customer)]
+public class OrdersController(OrderService orders) : ApiControllerBase
+{
+    /// <summary>
+    /// UC-052 Place an order from the cart. Send an <c>Idempotency-Key</c> header to make retries safe:
+    /// a repeated key returns the original order with 200 instead of creating a new one.
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult<OrderDetailDto>> Place(
+        PlaceOrderRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
+    {
+        var (order, created) = await orders.PlaceOrderAsync(CurrentUserId, request, idempotencyKey, ct);
+        return created ? StatusCode(StatusCodes.Status201Created, order) : Ok(order);
+    }
+}

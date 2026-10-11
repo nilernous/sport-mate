@@ -58,3 +58,34 @@ public record CartItemDto(
 
 /// <summary>Cart prices are indicative only (BR-031).</summary>
 public record CartDto(IReadOnlyList<CartItemDto> Items, int TotalQuantity, decimal EstimatedSubtotal);
+
+public record ShippingOptionDto(ShippingMethod Method, decimal Fee, string Description);
+
+public record CheckoutPreviewDto(
+    IReadOnlyList<CartItemDto> Items, AddressDto? Address, ShippingMethod ShippingMethod,
+    IReadOnlyList<ShippingOptionDto> ShippingOptions, decimal Subtotal, decimal ShippingFee, decimal Total,
+    bool CanPlaceOrder, IReadOnlyList<string> Problems);
+
+// ---------- Orders & payments ----------
+
+public record OrderItemDto(
+    int Id, int ProductId, int VariantId, string ProductName, string Sku, string Size, string Color,
+    string? ImageUrl, decimal UnitPrice, int Quantity, decimal LineTotal);
+
+public record OrderStatusHistoryDto(OrderStatus? FromStatus, OrderStatus ToStatus, string? ChangedBy, string? Note, DateTime ChangedAt);
+
+public record DeliveryAddressDto(string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District, string City);
+
+public record OrderDetailDto(
+    int Id, string OrderCode, int CustomerId, string CustomerName, OrderStatus Status, ShippingMethod ShippingMethod,
+    decimal Subtotal, decimal DiscountAmount, decimal ShippingFee, decimal TotalAmount, string? CouponCode,
+    DeliveryAddressDto DeliveryAddress, string? Note, IReadOnlyList<OrderItemDto> Items, PaymentDto? Payment,
+    IReadOnlyList<OrderStatusHistoryDto> StatusHistory, bool CanCancel, IReadOnlyList<OrderStatus> AllowedNextStatuses,
+    DateTime CreatedAt, DateTime UpdatedAt);
+
+public record BankTransferInstructionsDto(string BankName, string AccountNumber, string AccountName, decimal Amount, string TransferContent);
+
+public record PaymentDto(
+    int Id, int OrderId, string OrderCode, PaymentMethod Method, PaymentStatus Status, decimal Amount,
+    string? TransferReference, string? ConfirmedBy, DateTime? ConfirmedAt, string? Note,
+    BankTransferInstructionsDto? BankTransferInstructions, DateTime CreatedAt, DateTime UpdatedAt);

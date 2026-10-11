@@ -10,12 +10,18 @@ public static class DependencyInjection
     /// <summary>Registers the use-case services and their settings.</summary>
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<ShippingSettings>(configuration.GetSection(ShippingSettings.Section));
+        services.Configure<BankTransferSettings>(configuration.GetSection(BankTransferSettings.Section));
+
         services.AddScoped<AuthService>();
         services.AddScoped<AddressService>();
         services.AddScoped<CategoryBrandService>();
         services.AddScoped<ProductService>();
         services.AddScoped<VariantService>();
+        services.AddScoped<InventoryService>();
         services.AddScoped<CartService>();
+        services.AddScoped<PaymentService>();
+        services.AddScoped<OrderService>();
         return services;
     }
 }

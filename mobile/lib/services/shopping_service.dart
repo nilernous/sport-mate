@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_endpoints.dart';
 import '../models/common.dart';
+import '../models/order.dart';
 import '../models/shopping.dart';
 import '../models/user.dart';
 
@@ -35,5 +36,37 @@ class AddressService {
   Future<Address> create(Json data) async => Address.fromJson(await _api.post<Json>(ApiEndpoints.myAddresses, data: data));
 }
 
+class OrderService {
+  OrderService(this._api);
+
+  final ApiClient _api;
+
+  Future<CheckoutPreview> preview({int? addressId, required ShippingMethod shippingMethod}) async =>
+      CheckoutPreview.fromJson(await _api.post<Json>(ApiEndpoints.checkoutPreview, data: {
+        'addressId': addressId,
+        'shippingMethod': shippingMethod.apiName,
+      }));
+
+  /// [idempotencyKey] makes a retried submission return the same order instead of a duplicate.
+  Future<OrderDetail> place({
+    required int addressId,
+    required ShippingMethod shippingMethod,
+    required PaymentMethod paymentMethod,
+    String? note,
+    required String idempotencyKey,
+  }) async =>
+      OrderDetail.fromJson(await _api.post<Json>(
+        ApiEndpoints.orders,
+        headers: {'Idempotency-Key': idempotencyKey},
+        data: {
+          'addressId': addressId,
+          'shippingMethod': shippingMethod.apiName,
+          'paymentMethod': paymentMethod.apiName,
+          'note': note,
+        },
+      ));
+}
+
 final cartServiceProvider = Provider((ref) => CartService(ref.watch(apiClientProvider)));
 final addressServiceProvider = Provider((ref) => AddressService(ref.watch(apiClientProvider)));
+final orderServiceProvider = Provider((ref) => OrderService(ref.watch(apiClientProvider)));

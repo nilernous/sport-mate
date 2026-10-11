@@ -17,4 +17,10 @@ public static class MappingExtensions
     public static ImageDto ToDto(this ProductImage i) =>
         new(i.Id, i.ProductId, i.Url, i.AltText, i.DisplayOrder, i.IsPrimary);
 
+    public static DeliveryAddressDto ToDeliveryAddress(this Order o) =>
+        new(o.RecipientName, o.PhoneNumber, o.AddressLine, o.Ward, o.District, o.City);
+
+    public static OrderItemDto ToDto(this OrderItem i) =>
+        new(i.Id, i.ProductId, i.VariantId, i.ProductName, i.Sku, i.Size, i.Color, i.ImageUrl, i.UnitPrice, i.Quantity, i.LineTotal);
+
 }

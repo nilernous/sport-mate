@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/admin/admin_home_screen.dart';
 import '../../screens/admin/catalog_setup_screen.dart';
@@ -9,7 +10,9 @@ import '../../screens/admin/product_admin_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
 import '../../screens/cart/cart_screen.dart';
+import '../../screens/checkout/checkout_screen.dart';
 import '../../screens/home/home_screen.dart';
+import '../../screens/orders/order_screens.dart';
 import '../../screens/products/product_detail_screen.dart';
 import '../../screens/products/product_list_screen.dart';
 import '../../screens/profile/account_screens.dart';
@@ -101,6 +104,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       page('/products/:id', (s) => ProductDetailScreen(productId: idParam(s))),
 
       // Customer
+      page('/checkout', (_) => const CheckoutScreen()),
+      page('/orders/confirmation', (s) => OrderConfirmationScreen(order: s.extra as OrderDetail?)),
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
       page('/addresses/new', (_) => const AddressFormScreen()),
       page('/account/edit', (_) => const EditProfileScreen()),
