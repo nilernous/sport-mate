@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SportMate.API", "SportMate.API\SportMate.API.csproj", "{A586D2C8-E8BB-47EB-A584-7A8F77A99E26}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SportMate.Domain", "SportMate.Domain\SportMate.Domain.csproj", "{AE1F2429-672A-4006-AE47-ABE37701E05F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SportMate.Application", "SportMate.Application\SportMate.Application.csproj", "{C9B10434-5687-4461-9668-67F7DA81E7CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SportMate.Infrastructure", "SportMate.Infrastructure\SportMate.Infrastructure.csproj", "{B21674E7-9063-460A-B471-C1AC2C31BAB0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A586D2C8-E8BB-47EB-A584-7A8F77A99E26}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A586D2C8-E8BB-47EB-A584-7A8F77A99E26}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A586D2C8-E8BB-47EB-A584-7A8F77A99E26}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A586D2C8-E8BB-47EB-A584-7A8F77A99E26}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE1F2429-672A-4006-AE47-ABE37701E05F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE1F2429-672A-4006-AE47-ABE37701E05F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE1F2429-672A-4006-AE47-ABE37701E05F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE1F2429-672A-4006-AE47-ABE37701E05F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9B10434-5687-4461-9668-67F7DA81E7CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9B10434-5687-4461-9668-67F7DA81E7CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9B10434-5687-4461-9668-67F7DA81E7CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9B10434-5687-4461-9668-67F7DA81E7CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B21674E7-9063-460A-B471-C1AC2C31BAB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B21674E7-9063-460A-B471-C1AC2C31BAB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B21674E7-9063-460A-B471-C1AC2C31BAB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B21674E7-9063-460A-B471-C1AC2C31BAB0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
