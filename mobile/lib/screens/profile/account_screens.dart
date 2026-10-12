@@ -47,6 +47,7 @@ class AccountScreen extends ConsumerWidget {
         ),
         const Divider(),
         if (auth.isCustomer) ...[
+          _MenuTile(Icons.favorite_border, 'Wishlist', '/wishlist'),
           _MenuTile(Icons.location_on_outlined, 'Delivery addresses', '/addresses'),
         ],
         if (auth.isStaffOrAdmin) _MenuTile(Icons.dashboard_outlined, 'Admin Panel', '/admin', go: true),

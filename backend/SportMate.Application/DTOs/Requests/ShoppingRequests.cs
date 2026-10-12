@@ -45,3 +45,9 @@ public class PlaceOrderRequest
     [StringLength(500)]
     public string? Note { get; init; }
 }
+
+public class AddWishlistItemRequest
+{
+    [Range(1, int.MaxValue)]
+    public int ProductId { get; init; }
+}

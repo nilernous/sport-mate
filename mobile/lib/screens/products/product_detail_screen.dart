@@ -57,6 +57,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
+          if (!auth.isStaffOrAdmin)
+            Consumer(builder: (context, ref, _) {
+              final liked = ref.watch(isWishlistedProvider(widget.productId));
+              return IconButton(
+                tooltip: liked ? 'Remove from wishlist' : 'Add to wishlist',
+                icon: Icon(liked ? Icons.favorite : Icons.favorite_border, color: liked ? Colors.red : null),
+                onPressed: () {
+                  if (!auth.isLoggedIn) return _requireLogin();
+                  runGuarded(context, () => ref.read(wishlistProvider.notifier).toggle(widget.productId),
+                      success: liked ? 'Removed from wishlist' : 'Saved to wishlist');
+                },
+              );
+            }),
           if (auth.isStaffOrAdmin)
             IconButton(tooltip: 'Edit product', icon: const Icon(Icons.edit_outlined), onPressed: () => context.push('/admin/products/${widget.productId}')),
         ],

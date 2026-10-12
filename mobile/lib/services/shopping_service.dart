@@ -67,6 +67,22 @@ class OrderService {
       ));
 }
 
+class WishlistService {
+  WishlistService(this._api);
+
+  final ApiClient _api;
+
+  Future<List<WishlistItem>> list() async =>
+      (await _api.get<List<dynamic>>(ApiEndpoints.myWishlist)).map((e) => WishlistItem.fromJson(e as Json)).toList();
+
+  Future<List<WishlistItem>> add(int productId) async => (await _api.post<List<dynamic>>(ApiEndpoints.myWishlistItems, data: {'productId': productId}))
+      .map((e) => WishlistItem.fromJson(e as Json))
+      .toList();
+
+  Future<void> remove(int productId) => _api.delete<void>(ApiEndpoints.myWishlistItem(productId));
+}
+
 final cartServiceProvider = Provider((ref) => CartService(ref.watch(apiClientProvider)));
 final addressServiceProvider = Provider((ref) => AddressService(ref.watch(apiClientProvider)));
 final orderServiceProvider = Provider((ref) => OrderService(ref.watch(apiClientProvider)));
+final wishlistServiceProvider = Provider((ref) => WishlistService(ref.watch(apiClientProvider)));

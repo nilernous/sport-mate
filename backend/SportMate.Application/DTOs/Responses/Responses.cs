@@ -89,3 +89,7 @@ public record PaymentDto(
     int Id, int OrderId, string OrderCode, PaymentMethod Method, PaymentStatus Status, decimal Amount,
     string? TransferReference, string? ConfirmedBy, DateTime? ConfirmedAt, string? Note,
     BankTransferInstructionsDto? BankTransferInstructions, DateTime CreatedAt, DateTime UpdatedAt);
+
+// ---------- Wishlist ----------
+
+public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);

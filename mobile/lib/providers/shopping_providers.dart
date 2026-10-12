@@ -42,4 +42,36 @@ final cartProvider = AsyncNotifierProvider<CartNotifier, Cart>(CartNotifier.new)
 
 final cartCountProvider = Provider<int>((ref) => ref.watch(cartProvider).value?.totalQuantity ?? 0);
 
+/// Wishlist entries; product screens use it to show the heart state.
+class WishlistNotifier extends AsyncNotifier<List<WishlistItem>> {
+  @override
+  Future<List<WishlistItem>> build() async {
+    final isCustomer = ref.watch(authProvider.select((a) => a.isCustomer));
+    if (!isCustomer) return const [];
+    return ref.read(wishlistServiceProvider).list();
+  }
+
+  Future<void> toggle(int productId) async {
+    final service = ref.read(wishlistServiceProvider);
+    final current = state.value ?? const [];
+    if (current.any((w) => w.productId == productId)) {
+      await service.remove(productId);
+      state = AsyncData(current.where((w) => w.productId != productId).toList());
+    } else {
+      state = AsyncData(await service.add(productId));
+    }
+  }
+
+  Future<void> remove(int productId) async {
+    await ref.read(wishlistServiceProvider).remove(productId);
+    state = AsyncData((state.value ?? const []).where((w) => w.productId != productId).toList());
+  }
+}
+
+final wishlistProvider = AsyncNotifierProvider<WishlistNotifier, List<WishlistItem>>(WishlistNotifier.new);
+
+final isWishlistedProvider = Provider.family<bool, int>(
+  (ref, productId) => ref.watch(wishlistProvider).value?.any((w) => w.productId == productId) ?? false,
+);
+
 final addressesProvider = FutureProvider.autoDispose<List<Address>>((ref) => ref.watch(addressServiceProvider).list());

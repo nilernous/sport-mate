@@ -17,6 +17,7 @@ import '../../screens/products/product_detail_screen.dart';
 import '../../screens/products/product_list_screen.dart';
 import '../../screens/profile/account_screens.dart';
 import '../../screens/profile/address_screens.dart';
+import '../../screens/wishlist/wishlist_screen.dart';
 import 'app_shell.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
@@ -106,6 +107,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Customer
       page('/checkout', (_) => const CheckoutScreen()),
       page('/orders/confirmation', (s) => OrderConfirmationScreen(order: s.extra as OrderDetail?)),
+      page('/wishlist', (_) => const WishlistScreen()),
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
       page('/addresses/new', (_) => const AddressFormScreen()),
       page('/account/edit', (_) => const EditProfileScreen()),
