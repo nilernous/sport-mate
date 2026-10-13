@@ -115,7 +115,7 @@ public class AuthService(
         if (!hasher.Verify(user, user.PasswordHash, request.CurrentPassword))
             throw AppException.BadRequest("Current password is incorrect.", "currentPassword");
         if (request.CurrentPassword == request.NewPassword)
-            throw AppException.BadRequest("New password must be different from the current password.", "newPassword");
+            throw AppException.BadRequest("New password have to be different from the current password.", "newPassword");
 
         SetPassword(user, request.NewPassword);
         await db.SaveChangesAsync(ct);
