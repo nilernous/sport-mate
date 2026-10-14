@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
@@ -77,7 +76,7 @@ class _AdminProductListScreenState extends ConsumerState<AdminProductListScreen>
       );
 }
 
-/// Create/edit a product with its variants and images (UC-026, UC-028 – UC-037).
+/// Create/edit a product and add its variants (UC-026 – UC-030).
 class AdminProductEditScreen extends ConsumerStatefulWidget {
   const AdminProductEditScreen({super.key, this.productId});
 
@@ -164,7 +163,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
       if (!mounted) return;
       if (_product == null) {
         context.pushReplacement('/admin/products/${saved.id}');
-        showMessage(context, 'Product created. Now add variants and images.');
+        showMessage(context, 'Product created. Now add variants.');
       } else {
         setState(() => _apply(saved));
         showMessage(context, 'Product saved');
@@ -248,8 +247,6 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
                   if (product != null) ...[
                     const SizedBox(height: 24),
                     _VariantsSection(product: product, onChanged: _reloadProduct),
-                    const SizedBox(height: 24),
-                    _ImagesSection(product: product, onChanged: _reloadProduct),
                   ],
                 ]),
     );
@@ -262,26 +259,16 @@ class _VariantsSection extends ConsumerWidget {
   final ProductDetail product;
   final Future<void> Function() onChanged;
 
-  Future<void> _edit(BuildContext context, WidgetRef ref, Variant? variant) async {
-    final saved = await showDialog<bool>(context: context, builder: (_) => _VariantDialog(productId: product.id, variant: variant));
+  Future<void> _add(BuildContext context) async {
+    final saved = await showDialog<bool>(context: context, builder: (_) => _VariantDialog(productId: product.id));
     if (saved == true) await onChanged();
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref, Variant v) async {
-    if (!await confirmDialog(context, title: 'Delete variant', message: 'Delete ${v.label} (${v.sku})?', confirmLabel: 'Delete', destructive: true)) return;
-    if (!context.mounted) return;
-    await runGuarded(context, () async {
-      final result = await ref.read(adminServiceProvider).deleteVariant(v.id);
-      if (context.mounted) showMessage(context, result.message);
-      await onChanged();
-    });
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(child: Text('Variants (${product.variants.length})', style: Theme.of(context).textTheme.titleMedium)),
-          TextButton.icon(onPressed: () => _edit(context, ref, null), icon: const Icon(Icons.add), label: const Text('Add variant')),
+          TextButton.icon(onPressed: () => _add(context), icon: const Icon(Icons.add), label: const Text('Add variant')),
         ]),
         if (product.variants.isEmpty) const Text('Add at least one size/color variant so customers can buy this product.'),
         for (final v in product.variants)
@@ -291,28 +278,15 @@ class _VariantsSection extends ConsumerWidget {
               title: Text('${v.label} · ${formatVnd(v.price)}'),
               subtitle: Text('SKU ${v.sku} · stock ${v.stockQuantity}'),
               leading: StatusChip.active(v.isActive),
-              trailing: PopupMenuButton<String>(
-                onSelected: (a) => switch (a) {
-                  'edit' => _edit(context, ref, v),
-                  'stock' => context.push('/admin/inventory/movements?variantId=${v.id}&title=${Uri.encodeComponent(v.sku)}'),
-                  _ => _delete(context, ref, v),
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'stock', child: Text('Stock history')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
-              ),
             ),
           ),
       ]);
 }
 
 class _VariantDialog extends ConsumerStatefulWidget {
-  const _VariantDialog({required this.productId, this.variant});
+  const _VariantDialog({required this.productId});
 
   final int productId;
-  final Variant? variant;
 
   @override
   ConsumerState<_VariantDialog> createState() => _VariantDialogState();
@@ -320,12 +294,12 @@ class _VariantDialog extends ConsumerStatefulWidget {
 
 class _VariantDialogState extends ConsumerState<_VariantDialog> {
   final _form = GlobalKey<FormState>();
-  late final _sku = TextEditingController(text: widget.variant?.sku);
-  late final _size = TextEditingController(text: widget.variant?.size);
-  late final _color = TextEditingController(text: widget.variant?.color);
-  late final _price = TextEditingController(text: widget.variant?.price.toStringAsFixed(0));
+  final _sku = TextEditingController();
+  final _size = TextEditingController();
+  final _color = TextEditingController();
+  final _price = TextEditingController();
   final _stock = TextEditingController(text: '0');
-  late bool _active = widget.variant?.isActive ?? true;
+  bool _active = true;
 
   @override
   void dispose() {
@@ -343,12 +317,11 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
       'color': _color.text.trim(),
       'price': parseMoney(_price.text),
       'isActive': _active,
-      if (widget.variant == null) 'initialStock': int.tryParse(_stock.text) ?? 0,
+      'initialStock': int.tryParse(_stock.text) ?? 0,
     };
-    final service = ref.read(adminServiceProvider);
     final ok = await runGuarded(
       context,
-      () => widget.variant == null ? service.createVariant(widget.productId, data) : service.updateVariant(widget.variant!.id, data),
+      () => ref.read(adminServiceProvider).createVariant(widget.productId, data),
       success: 'Variant saved',
     );
     if (ok && mounted) Navigator.pop(context, true);
@@ -356,7 +329,7 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: Text(widget.variant == null ? 'New variant' : 'Edit variant'),
+        title: const Text('New variant'),
         content: Form(
           key: _form,
           child: SingleChildScrollView(
@@ -370,19 +343,13 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
               ]),
               const SizedBox(height: 12),
               TextFormField(controller: _price, decoration: const InputDecoration(labelText: 'Price (VND)'), keyboardType: TextInputType.number, validator: Validators.money),
-              if (widget.variant == null) ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _stock,
-                  decoration: const InputDecoration(labelText: 'Initial stock'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => (int.tryParse(v ?? '') ?? -1) < 0 ? 'Enter 0 or more' : null,
-                ),
-              ] else
-                const Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: Text('Change stock from Inventory so every change is recorded.', style: TextStyle(fontSize: 12)),
-                ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _stock,
+                decoration: const InputDecoration(labelText: 'Initial stock'),
+                keyboardType: TextInputType.number,
+                validator: (v) => (int.tryParse(v ?? '') ?? -1) < 0 ? 'Enter 0 or more' : null,
+              ),
               SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active'), value: _active, onChanged: (v) => setState(() => _active = v)),
             ]),
           ),
@@ -392,113 +359,4 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
           BusyButton(label: 'Save', onPressed: _save),
         ],
       );
-}
-
-class _ImagesSection extends ConsumerWidget {
-  const _ImagesSection({required this.product, required this.onChanged});
-
-  final ProductDetail product;
-  final Future<void> Function() onChanged;
-
-  static String _contentType(String name) {
-    final lower = name.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
-  }
-
-  Future<void> _upload(BuildContext context, WidgetRef ref) async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
-    if (file == null || !context.mounted) return;
-    await runGuarded(context, () async {
-      final bytes = await file.readAsBytes();
-      await ref.read(adminServiceProvider).uploadImage(product.id, bytes, file.name, file.mimeType ?? _contentType(file.name));
-      await onChanged();
-    }, success: 'Image uploaded');
-  }
-
-  Future<void> _addUrl(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final url = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add image URL'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'https://...'), keyboardType: TextInputType.url),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Add')),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (url == null || url.isEmpty || !context.mounted) return;
-    await runGuarded(context, () async {
-      await ref.read(adminServiceProvider).addImageUrl(product.id, url);
-      await onChanged();
-    }, success: 'Image added');
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final service = ref.read(adminServiceProvider);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: Text('Images (${product.images.length})', style: Theme.of(context).textTheme.titleMedium)),
-        IconButton(tooltip: 'Upload image', onPressed: () => _upload(context, ref), icon: const Icon(Icons.upload_outlined)),
-        IconButton(tooltip: 'Add image URL', onPressed: () => _addUrl(context, ref), icon: const Icon(Icons.link)),
-      ]),
-      if (product.images.isEmpty) const Text('No images yet. JPEG, PNG or WebP, up to 5 MB.'),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final (index, image) in product.images.indexed)
-          SizedBox(
-            width: 120,
-            child: Column(children: [
-              Stack(children: [
-                AppImage(image.url, width: 120, height: 120),
-                if (image.isPrimary)
-                  const Positioned(left: 4, top: 4, child: StatusChip('Primary', color: Colors.blue)),
-              ]),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Move left',
-                  onPressed: index == 0
-                      ? null
-                      : () => runGuarded(context, () async {
-                            await service.updateImage(image.id, altText: image.altText, displayOrder: product.images[index - 1].displayOrder - 1, isPrimary: image.isPrimary);
-                            await onChanged();
-                          }),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Set as primary',
-                  onPressed: image.isPrimary
-                      ? null
-                      : () => runGuarded(context, () async {
-                            await service.updateImage(image.id, altText: image.altText, displayOrder: image.displayOrder, isPrimary: true);
-                            await onChanged();
-                          }),
-                  icon: Icon(image.isPrimary ? Icons.star : Icons.star_border),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Delete image',
-                  onPressed: () async {
-                    if (!await confirmDialog(context, title: 'Delete image', message: 'Remove this image from the product?', confirmLabel: 'Delete', destructive: true)) return;
-                    if (!context.mounted) return;
-                    await runGuarded(context, () async {
-                      await service.deleteImage(image.id);
-                      await onChanged();
-                    });
-                  },
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ]),
-            ]),
-          ),
-      ]),
-    ]);
-  }
 }

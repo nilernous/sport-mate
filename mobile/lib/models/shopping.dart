@@ -95,22 +95,6 @@ class ShippingOption {
       ShippingOption(parseShipping(json['method']), toDouble(json['fee']), '${json['description']}');
 }
 
-class CouponCheck {
-  const CouponCheck({required this.isValid, required this.code, required this.discountAmount, required this.message});
-
-  final bool isValid;
-  final String code;
-  final double discountAmount;
-  final String message;
-
-  factory CouponCheck.fromJson(Json json) => CouponCheck(
-        isValid: json['isValid'] == true,
-        code: '${json['code']}',
-        discountAmount: toDouble(json['discountAmount']),
-        message: '${json['message']}',
-      );
-}
-
 /// Totals calculated by the server; the app never computes them itself (BR-033).
 class CheckoutPreview {
   const CheckoutPreview({
@@ -118,9 +102,7 @@ class CheckoutPreview {
     this.address,
     required this.shippingMethod,
     required this.shippingOptions,
-    this.coupon,
     required this.subtotal,
-    required this.discountAmount,
     required this.shippingFee,
     required this.total,
     required this.canPlaceOrder,
@@ -131,9 +113,7 @@ class CheckoutPreview {
   final Address? address;
   final ShippingMethod shippingMethod;
   final List<ShippingOption> shippingOptions;
-  final CouponCheck? coupon;
   final double subtotal;
-  final double discountAmount;
   final double shippingFee;
   final double total;
   final bool canPlaceOrder;
@@ -144,9 +124,7 @@ class CheckoutPreview {
         address: json['address'] == null ? null : Address.fromJson(json['address'] as Json),
         shippingMethod: parseShipping(json['shippingMethod']),
         shippingOptions: toList(json['shippingOptions'], ShippingOption.fromJson),
-        coupon: json['coupon'] == null ? null : CouponCheck.fromJson(json['coupon'] as Json),
         subtotal: toDouble(json['subtotal']),
-        discountAmount: toDouble(json['discountAmount']),
         shippingFee: toDouble(json['shippingFee']),
         total: toDouble(json['total']),
         canPlaceOrder: json['canPlaceOrder'] == true,

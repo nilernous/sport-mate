@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../core/utils/formatters.dart';
 import '../models/order.dart';
-import '../models/review.dart';
 
 /// Network image that resolves server-relative upload paths and shows a placeholder.
 class AppImage extends StatelessWidget {
@@ -98,12 +97,6 @@ class StatusChip extends StatelessWidget {
         PaymentStatus.paid => Colors.green,
         PaymentStatus.failed => Colors.red,
         PaymentStatus.refunded => Colors.purple,
-      });
-
-  factory StatusChip.review(ReviewStatus status) => StatusChip(status.label, color: switch (status) {
-        ReviewStatus.approved => Colors.green,
-        ReviewStatus.hidden => Colors.orange,
-        ReviewStatus.rejected => Colors.red,
       });
 
   factory StatusChip.active(bool isActive) => StatusChip(isActive ? 'Active' : 'Inactive', color: isActive ? Colors.green : Colors.grey);

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../models/catalog.dart';
-import '../../models/review.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/shopping_providers.dart';
@@ -124,14 +123,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           const SizedBox(height: 4),
           Text(p.name, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          InkWell(
-            onTap: () => context.push('/products/${p.id}/reviews'),
-            child: Row(children: [
-              RatingStars(p.averageRating),
-              const SizedBox(width: 6),
-              Text(p.reviewCount == 0 ? 'No reviews yet' : '${p.averageRating.toStringAsFixed(1)} (${p.reviewCount} reviews)'),
-            ]),
-          ),
+          Row(children: [
+            RatingStars(p.averageRating),
+            const SizedBox(width: 6),
+            Text(p.reviewCount == 0 ? 'No reviews yet' : '${p.averageRating.toStringAsFixed(1)} (${p.reviewCount} reviews)'),
+          ]),
           const SizedBox(height: 12),
           Text(formatVnd(variant?.price ?? p.price), style: theme.textTheme.headlineSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w800)),
           if (p.variants.isEmpty) ...[
@@ -184,7 +180,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ],
         ]),
       ),
-      _ReviewsPreview(productId: p.id),
+      const SizedBox(height: 16),
     ]);
   }
 
@@ -197,48 +193,5 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             Expanded(child: BusyButton(label: 'Buy now', onPressed: p.variants.isEmpty ? null : () => _addToCart(p, buyNow: true))),
           ]),
         ),
-      );
-}
-
-class _ReviewsPreview extends ConsumerWidget {
-  const _ReviewsPreview({required this.productId});
-
-  final int productId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reviews = ref.watch(productReviewsPreviewProvider(productId)).value;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SectionHeader('Reviews', action: 'See all', onAction: () => context.push('/products/$productId/reviews')),
-      if (reviews == null)
-        const LoadingView()
-      else if (reviews.reviews.items.isEmpty)
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('Be the first to review this product after your order is delivered.'))
-      else
-        for (final r in reviews.reviews.items) ReviewTile(r),
-    ]);
-  }
-}
-
-class ReviewTile extends StatelessWidget {
-  const ReviewTile(this.review, {super.key, this.trailing});
-
-  final Review review;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        leading: CircleAvatar(child: Text(review.userName.isEmpty ? '?' : review.userName[0].toUpperCase())),
-        title: Row(children: [
-          Flexible(child: Text(review.userName, overflow: TextOverflow.ellipsis)),
-          const SizedBox(width: 8),
-          RatingStars(review.rating.toDouble(), size: 14),
-        ]),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if ((review.comment ?? '').isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(review.comment!)),
-          const SizedBox(height: 4),
-          Text(formatDate(review.createdAt), style: Theme.of(context).textTheme.labelSmall),
-        ]),
-        trailing: trailing,
       );
 }

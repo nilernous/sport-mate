@@ -47,7 +47,6 @@ class AccountScreen extends ConsumerWidget {
         ),
         const Divider(),
         if (auth.isCustomer) ...[
-          _MenuTile(Icons.receipt_long_outlined, 'My orders', '/orders'),
           _MenuTile(Icons.favorite_border, 'Wishlist', '/wishlist'),
           _MenuTile(Icons.location_on_outlined, 'Delivery addresses', '/addresses'),
         ],
