@@ -746,6 +746,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.3.0"
+    <!-- Backend documentation maintenance -->
+<!-- Reviewed backend project structure -->
+<!-- Documentation updated by Sang -->
+<!-- Backend setup notes maintained -->
+<!-- Project structure reference -->
+<!-- ASP.NET Core Web API documentation -->
+<!-- .NET 8 backend project -->
+<!-- SportMate API documentation notes -->
+<!-- Application layer documentation -->
   web:
     dependency: transitive
     description:
