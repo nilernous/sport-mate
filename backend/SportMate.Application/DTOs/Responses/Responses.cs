@@ -12,14 +12,6 @@ public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserDto User)
 
 public record MessageResponse(string Message);
 
-public record AdminUserDto(
-    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
-    DateTime CreatedAt, DateTime UpdatedAt);
-
-public record AdminUserDetailDto(
-    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
-    DateTime CreatedAt, DateTime UpdatedAt, int OrderCount, IReadOnlyList<AddressDto> Addresses);
-
 public record AddressDto(
     int Id, string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District,
     string City, bool IsDefault);
@@ -58,16 +50,6 @@ public record FilterOptionsDto(
     IReadOnlyList<CategoryDto> Categories, IReadOnlyList<BrandDto> Brands, IReadOnlyList<string> Sizes,
     IReadOnlyList<string> Colors, decimal MinPrice, decimal MaxPrice);
 
-// ---------- Inventory ----------
-
-public record InventoryItemDto(
-    int VariantId, int ProductId, string ProductName, string Sku, string Size, string Color, decimal Price,
-    int StockQuantity, bool IsActive);
-
-public record StockMovementDto(
-    int Id, int VariantId, string Sku, string ProductName, int QuantityChange, int QuantityAfter,
-    StockMovementType Type, string? Reason, int? OrderId, string? ActorName, DateTime CreatedAt);
-
 // ---------- Cart & checkout ----------
 
 public record CartItemDto(
@@ -77,29 +59,18 @@ public record CartItemDto(
 /// <summary>Cart prices are indicative only (BR-031).</summary>
 public record CartDto(IReadOnlyList<CartItemDto> Items, int TotalQuantity, decimal EstimatedSubtotal);
 
-public record CouponCheckDto(bool IsValid, string Code, decimal DiscountAmount, string Message);
-
 public record ShippingOptionDto(ShippingMethod Method, decimal Fee, string Description);
 
 public record CheckoutPreviewDto(
     IReadOnlyList<CartItemDto> Items, AddressDto? Address, ShippingMethod ShippingMethod,
-    IReadOnlyList<ShippingOptionDto> ShippingOptions, CouponCheckDto? Coupon, decimal Subtotal,
-    decimal DiscountAmount, decimal ShippingFee, decimal Total, bool CanPlaceOrder, IReadOnlyList<string> Problems);
+    IReadOnlyList<ShippingOptionDto> ShippingOptions, decimal Subtotal, decimal ShippingFee, decimal Total,
+    bool CanPlaceOrder, IReadOnlyList<string> Problems);
 
 // ---------- Orders & payments ----------
 
 public record OrderItemDto(
     int Id, int ProductId, int VariantId, string ProductName, string Sku, string Size, string Color,
     string? ImageUrl, decimal UnitPrice, int Quantity, decimal LineTotal);
-
-public record OrderSummaryDto(
-    int Id, string OrderCode, OrderStatus Status, PaymentMethod? PaymentMethod, PaymentStatus? PaymentStatus,
-    decimal TotalAmount, int ItemCount, string? FirstItemName, string? FirstItemImageUrl, DateTime CreatedAt);
-
-public record AdminOrderSummaryDto(
-    int Id, string OrderCode, int CustomerId, string CustomerName, string CustomerEmail, OrderStatus Status,
-    PaymentMethod? PaymentMethod, PaymentStatus? PaymentStatus, decimal TotalAmount, int ItemCount,
-    DateTime CreatedAt);
 
 public record OrderStatusHistoryDto(OrderStatus? FromStatus, OrderStatus ToStatus, string? ChangedBy, string? Note, DateTime ChangedAt);
 
@@ -119,43 +90,6 @@ public record PaymentDto(
     string? TransferReference, string? ConfirmedBy, DateTime? ConfirmedAt, string? Note,
     BankTransferInstructionsDto? BankTransferInstructions, DateTime CreatedAt, DateTime UpdatedAt);
 
-// ---------- Coupons ----------
-
-public record CouponDto(
-    int Id, string Code, string? Description, DiscountType DiscountType, decimal DiscountValue,
-    decimal? MaxDiscountAmount, decimal MinOrderAmount, int? ApplicableCategoryId, string? ApplicableCategoryName,
-    DateTime StartsAt, DateTime EndsAt, int? UsageLimit, int? PerUserLimit, int UsedCount, bool IsActive,
-    DateTime CreatedAt, DateTime UpdatedAt);
-
-// ---------- Reviews & wishlist ----------
-
-public record ReviewDto(
-    int Id, int ProductId, string ProductName, int UserId, string UserName, int Rating, string? Comment,
-    ReviewStatus Status, DateTime CreatedAt, DateTime UpdatedAt);
-
-public record ReviewSummaryDto(double AverageRating, int ReviewCount, IReadOnlyDictionary<int, int> RatingCounts);
-
-public record ProductReviewsDto(ReviewSummaryDto Summary, PagedResult<ReviewDto> Reviews);
-
-public record MyReviewStatusDto(bool CanReview, string? Reason, ReviewDto? Review);
+// ---------- Wishlist ----------
 
 public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);
-
-// ---------- Reports ----------
-
-public record StatusCountDto(OrderStatus Status, int Count);
-
-public record DashboardSummaryDto(
-    DateOnly From, DateOnly To, int TotalOrders, int PaidOrders, decimal Revenue, decimal AverageOrderValue,
-    int NewCustomers, int CancelledOrders, int LowStockVariants, IReadOnlyList<StatusCountDto> OrdersByStatus,
-    IReadOnlyList<DailyRevenueDto> DailyRevenue, string RevenueDefinition);
-
-public record DailyRevenueDto(DateOnly Date, int Orders, decimal Revenue);
-
-public record OrderReportRowDto(string Group, int OrderCount, decimal TotalAmount, decimal PaidAmount);
-
-public record OrderReportDto(DateOnly From, DateOnly To, string GroupBy, IReadOnlyList<OrderReportRowDto> Rows, int TotalOrders, decimal TotalAmount);
-
-public record TopProductDto(int Rank, int ProductId, string ProductName, string? ImageUrl, int QuantitySold, decimal Revenue);
-
-public record TopProductsReportDto(DateOnly From, DateOnly To, IReadOnlyList<TopProductDto> Products, string Definition);

@@ -11,15 +11,13 @@ using SportMate.Domain.Enums;
 
 namespace SportMate.Application.Services;
 
-/// <summary>Checkout and order lifecycle (UC-051 – UC-057, UC-066, UC-067).</summary>
+/// <summary>Checkout and order placement (UC-051, UC-052).</summary>
 public class OrderService(
     IApplicationDbContext db,
     CartService carts,
-    CouponService coupons,
     InventoryService inventory,
     PaymentService payments,
-    IOptions<ShippingSettings> shippingOptions,
-    ReportSettingsAccessor reportSettings)
+    IOptions<ShippingSettings> shippingOptions)
 {
     private readonly ShippingSettings _shipping = shippingOptions.Value;
 
@@ -38,14 +36,11 @@ public class OrderService(
 
     // ---------- Checkout ----------
 
-    private sealed record PricedCart(List<CartItemDto> Items, List<CouponService.PricedLine> Lines, decimal Subtotal, List<string> Problems);
+    private sealed record PricedCart(List<CartItemDto> Items, decimal Subtotal, List<string> Problems);
 
     private async Task<PricedCart> PriceCartAsync(int userId, CancellationToken ct)
     {
         var items = await carts.GetItemsAsync(userId, ct);
-        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
-        var categoryByProduct = await db.Products.Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, p => p.CategoryId, ct);
 
         var problems = new List<string>();
         if (items.Count == 0) problems.Add("Your cart is empty.");
@@ -57,11 +52,10 @@ public class OrderService(
         }
 
         var available = items.Where(i => i.IsAvailable).ToList();
-        var lines = available.Select(i => new CouponService.PricedLine(i.ProductId, categoryByProduct[i.ProductId], i.LineTotal)).ToList();
-        return new PricedCart(items, lines, available.Sum(i => i.LineTotal), problems);
+        return new PricedCart(items, available.Sum(i => i.LineTotal), problems);
     }
 
-    // UC-051, UC-066, UC-067: nothing is persisted; the coupon is only previewed.
+    // UC-051: nothing is persisted.
     public async Task<CheckoutPreviewDto> PreviewAsync(int userId, CheckoutPreviewRequest r, CancellationToken ct)
     {
         var priced = await PriceCartAsync(userId, ct);
@@ -79,41 +73,24 @@ public class OrderService(
             problems.Add("Select a delivery address.");
         }
 
-        CouponCheckDto? couponCheck = null;
-        decimal discount = 0;
-        if (!string.IsNullOrWhiteSpace(r.CouponCode))
-        {
-            var evaluation = await coupons.EvaluateAsync(r.CouponCode, userId, priced.Lines, ct);
-            couponCheck = evaluation.ToDto(r.CouponCode);
-            discount = evaluation.DiscountAmount;
-        }
-
-        var shippingFee = priced.Items.Count == 0 ? 0 : _shipping.FeeFor(r.ShippingMethod, priced.Subtotal - discount);
+        var shippingFee = priced.Items.Count == 0 ? 0 : _shipping.FeeFor(r.ShippingMethod, priced.Subtotal);
         return new CheckoutPreviewDto(
-            priced.Items, address, r.ShippingMethod, ShippingOptions(priced.Subtotal - discount), couponCheck,
-            priced.Subtotal, discount, shippingFee, priced.Subtotal - discount + shippingFee,
-            problems.Count == 0 && couponCheck?.IsValid != false, problems);
+            priced.Items, address, r.ShippingMethod, ShippingOptions(priced.Subtotal),
+            priced.Subtotal, shippingFee, priced.Subtotal + shippingFee, problems.Count == 0, problems);
     }
 
-    // UC-065
-    public async Task<CouponCheckDto> ValidateCouponAsync(int userId, string code, CancellationToken ct)
-    {
-        var priced = await PriceCartAsync(userId, ct);
-        return (await coupons.EvaluateAsync(code, userId, priced.Lines, ct)).ToDto(code);
-    }
-
-    public IReadOnlyList<ShippingOptionDto> ShippingOptions(decimal discountedSubtotal) =>
+    public IReadOnlyList<ShippingOptionDto> ShippingOptions(decimal subtotal) =>
     [
-        new(ShippingMethod.Standard, _shipping.FeeFor(ShippingMethod.Standard, discountedSubtotal),
+        new(ShippingMethod.Standard, _shipping.FeeFor(ShippingMethod.Standard, subtotal),
             _shipping.FreeStandardShippingThreshold > 0
                 ? $"3-5 days. Free for orders from {_shipping.FreeStandardShippingThreshold:N0} VND."
                 : "3-5 days."),
-        new(ShippingMethod.Express, _shipping.FeeFor(ShippingMethod.Express, discountedSubtotal), "1-2 days."),
+        new(ShippingMethod.Express, _shipping.FeeFor(ShippingMethod.Express, subtotal), "1-2 days."),
     ];
 
     // ---------- Place order ----------
 
-    // UC-052: validate everything, then create order, reduce stock and record coupon usage in one transaction (BR-035, BR-074).
+    // UC-052: validate everything, then create the order and reduce stock in one transaction (BR-035).
     public async Task<(OrderDetailDto Order, bool Created)> PlaceOrderAsync(int userId, PlaceOrderRequest r, string? idempotencyKey, CancellationToken ct)
     {
         idempotencyKey = TextNormalizer.Clean(idempotencyKey);
@@ -132,17 +109,8 @@ public class OrderService(
         var priced = await PriceCartAsync(userId, ct);
         if (priced.Problems.Count > 0) throw AppException.Conflict(string.Join(" ", priced.Problems));
 
-        // The coupon is re-checked here even if the preview accepted it (BR-058).
-        CouponService.Evaluation? evaluation = null;
-        if (!string.IsNullOrWhiteSpace(r.CouponCode))
-        {
-            evaluation = await coupons.EvaluateAsync(r.CouponCode, userId, priced.Lines, ct);
-            if (!evaluation.IsValid) throw AppException.Conflict(evaluation.Message);
-        }
-
-        var discount = evaluation?.DiscountAmount ?? 0;
-        var shippingFee = _shipping.FeeFor(r.ShippingMethod!.Value, priced.Subtotal - discount);
-        var total = priced.Subtotal - discount + shippingFee;
+        var shippingFee = _shipping.FeeFor(r.ShippingMethod!.Value, priced.Subtotal);
+        var total = priced.Subtotal + shippingFee;
         var now = DateTime.UtcNow;
 
         var order = new Order
@@ -152,11 +120,8 @@ public class OrderService(
             Status = OrderStatus.Pending,
             ShippingMethod = r.ShippingMethod.Value,
             Subtotal = priced.Subtotal,
-            DiscountAmount = discount,
             ShippingFee = shippingFee,
             TotalAmount = total,
-            CouponId = evaluation?.Coupon?.Id,
-            CouponCode = evaluation?.Coupon?.Code,
             RecipientName = address.RecipientName,
             PhoneNumber = address.PhoneNumber,
             AddressLine = address.AddressLine,
@@ -195,26 +160,11 @@ public class OrderService(
             });
         }
 
-        if (evaluation?.Coupon is { } coupon)
-        {
-            var claimed = await db.Coupons
-                .Where(c => c.Id == coupon.Id && c.IsActive && (c.UsageLimit == null || c.UsedCount < c.UsageLimit))
-                .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedCount, c => c.UsedCount + 1), ct);
-            if (claimed == 0) throw AppException.Conflict("This coupon has just reached its usage limit.");
-        }
-
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
 
         movements.ForEach(m => m.OrderId = order.Id);
         db.StockMovements.AddRange(movements);
-        if (evaluation?.Coupon is { } usedCoupon)
-        {
-            db.CouponUsages.Add(new CouponUsage
-            {
-                CouponId = usedCoupon.Id, UserId = userId, OrderId = order.Id, DiscountAmount = discount, UsedAt = now,
-            });
-        }
         await db.SaveChangesAsync(ct);
 
         // Purchased lines leave the cart (BR-037).
@@ -227,172 +177,6 @@ public class OrderService(
 
     private static string NewOrderCode(DateTime now) =>
         $"SM{now:yyMMdd}{RandomNumberGenerator.GetString("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6)}";
-
-    // ---------- Customer views ----------
-
-    // UC-053
-    public async Task<PagedResult<OrderSummaryDto>> ListOwnAsync(int userId, OrderQuery q, CancellationToken ct)
-    {
-        var query = db.Orders.AsNoTracking().Where(o => o.UserId == userId);
-        if (q.Status is not null) query = query.Where(o => o.Status == q.Status);
-
-        return await query.OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id)
-            .Select(o => new OrderSummaryDto(
-                o.Id, o.OrderCode, o.Status,
-                o.Payment != null ? o.Payment.Method : null, o.Payment != null ? o.Payment.Status : null,
-                o.TotalAmount, o.Items.Sum(i => i.Quantity),
-                o.Items.OrderBy(i => i.Id).Select(i => i.ProductName).FirstOrDefault(),
-                o.Items.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault(),
-                o.CreatedAt))
-            .ToPagedResultAsync(q, ct);
-    }
-
-    // UC-054: another customer's order is reported as not found, not forbidden (BR-038).
-    public async Task<OrderDetailDto> GetOwnAsync(int userId, int orderId, CancellationToken ct)
-    {
-        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.UserId == userId, ct)) throw AppException.NotFound("Order");
-        return await GetDetailAsync(orderId, ct);
-    }
-
-    // UC-055
-    public async Task<OrderDetailDto> CancelOwnAsync(int userId, int orderId, string? reason, CancellationToken ct)
-    {
-        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.UserId == userId, ct)) throw AppException.NotFound("Order");
-        await CancelAsync(orderId, userId, isCustomer: true, TextNormalizer.Clean(reason) ?? "Cancelled by customer", ct);
-        return await GetDetailAsync(orderId, ct);
-    }
-
-    // ---------- Staff / Admin ----------
-
-    // UC-056
-    public async Task<PagedResult<AdminOrderSummaryDto>> ListAllAsync(AdminOrderQuery q, CancellationToken ct)
-    {
-        var (fromUtc, toUtc) = reportSettings.ToUtcRange(q.From, q.To, requireRange: false);
-        var query = db.Orders.AsNoTracking();
-        if (q.Status is not null) query = query.Where(o => o.Status == q.Status);
-        if (q.PaymentStatus is not null) query = query.Where(o => o.Payment != null && o.Payment.Status == q.PaymentStatus);
-        if (q.CustomerId is not null) query = query.Where(o => o.UserId == q.CustomerId);
-        if (fromUtc is not null) query = query.Where(o => o.CreatedAt >= fromUtc);
-        if (toUtc is not null) query = query.Where(o => o.CreatedAt < toUtc);
-        if (!string.IsNullOrWhiteSpace(q.Keyword))
-        {
-            var k = q.Keyword.Trim();
-            query = query.Where(o => o.OrderCode.Contains(k) || o.User.FullName.Contains(k) || o.User.Email.Contains(k) || o.PhoneNumber.Contains(k));
-        }
-
-        return await query.OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id)
-            .Select(o => new AdminOrderSummaryDto(
-                o.Id, o.OrderCode, o.UserId, o.User.FullName, o.User.Email, o.Status,
-                o.Payment != null ? o.Payment.Method : null, o.Payment != null ? o.Payment.Status : null,
-                o.TotalAmount, o.Items.Sum(i => i.Quantity), o.CreatedAt))
-            .ToPagedResultAsync(q, ct);
-    }
-
-    public Task<OrderDetailDto> GetForStaffAsync(int orderId, CancellationToken ct) => GetDetailAsync(orderId, ct);
-
-    // UC-057
-    public async Task<OrderDetailDto> UpdateStatusAsync(int actorId, int orderId, OrderStatus target, string? note, CancellationToken ct)
-    {
-        if (target == OrderStatus.Cancelled)
-        {
-            await CancelAsync(orderId, actorId, isCustomer: false, TextNormalizer.Clean(note) ?? "Cancelled by staff", ct);
-            return await GetDetailAsync(orderId, ct);
-        }
-
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        var order = await db.Orders.Include(o => o.Payment).SingleOrDefaultAsync(o => o.Id == orderId, ct)
-                    ?? throw AppException.NotFound("Order");
-        EnsureTransition(order.Status, target);
-
-        // Payment rules cannot be bypassed by a status change (BR-043).
-        if (target == OrderStatus.Shipping && order.Payment is { Method: PaymentMethod.BankTransfer, Status: not PaymentStatus.Paid })
-            throw AppException.Conflict("A bank-transfer order can be shipped only after its payment is confirmed.");
-
-        var now = DateTime.UtcNow;
-        var from = order.Status;
-        order.Status = target;
-        order.UpdatedAt = now;
-        order.StatusHistory.Add(new OrderStatusHistory { FromStatus = from, ToStatus = target, ChangedByUserId = actorId, ChangedAt = now, Note = TextNormalizer.Clean(note) });
-
-        // COD: delivering the order is the agreed confirmation that cash was collected (BR-049).
-        if (target == OrderStatus.Completed && order.Payment is { Method: PaymentMethod.COD, Status: PaymentStatus.Pending } cod)
-            payments.MarkPaid(cod, actorId, now, "Cash collected on delivery");
-
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-        return await GetDetailAsync(orderId, ct);
-    }
-
-    /// <summary>
-    /// Cancels an order and restores its stock exactly once (BR-028). The status change is saved first
-    /// under the order's row version, so a concurrent second cancellation fails with 409 instead of
-    /// restoring stock twice.
-    /// </summary>
-    private async Task CancelAsync(int orderId, int actorId, bool isCustomer, string note, CancellationToken ct)
-    {
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        var order = await db.Orders.Include(o => o.Items).Include(o => o.Payment)
-                        .SingleOrDefaultAsync(o => o.Id == orderId, ct) ?? throw AppException.NotFound("Order");
-
-        if (isCustomer && !IsCustomerCancellable(order.Status))
-            throw AppException.Conflict("This order can no longer be cancelled because it has already shipped or been closed.");
-        EnsureTransition(order.Status, OrderStatus.Cancelled);
-
-        var now = DateTime.UtcNow;
-        var from = order.Status;
-        order.Status = OrderStatus.Cancelled;
-        order.CancelledAt = now;
-        order.UpdatedAt = now;
-        order.StatusHistory.Add(new OrderStatusHistory { FromStatus = from, ToStatus = OrderStatus.Cancelled, ChangedByUserId = actorId, ChangedAt = now, Note = note });
-
-        if (order.Payment is { } payment)
-        {
-            if (payment.Status == PaymentStatus.Pending)
-            {
-                payment.Status = PaymentStatus.Failed;
-                payment.Note = "Order cancelled before payment";
-                payment.UpdatedAt = now;
-            }
-            else if (payment.Status == PaymentStatus.Paid)
-            {
-                // Cancelling a paid order does not refund it automatically (BR-053).
-                payment.Note = "Order cancelled after payment: refund pending";
-                payment.UpdatedAt = now;
-            }
-        }
-        await db.SaveChangesAsync(ct);
-
-        foreach (var item in order.Items)
-        {
-            var after = await inventory.ChangeStockAsync(item.VariantId, item.Quantity, ct)
-                        ?? throw AppException.Conflict("Stock could not be restored.");
-            db.StockMovements.Add(new StockMovement
-            {
-                VariantId = item.VariantId, QuantityChange = item.Quantity, QuantityAfter = after,
-                Type = StockMovementType.OrderCancelled, OrderId = order.Id, ActorUserId = actorId, CreatedAt = now,
-            });
-        }
-
-        // A cancelled order gives its coupon use back.
-        if (order.CouponId is not null)
-        {
-            var released = await db.CouponUsages.Where(u => u.OrderId == order.Id).ExecuteDeleteAsync(ct);
-            if (released > 0)
-            {
-                await db.Coupons.Where(c => c.Id == order.CouponId && c.UsedCount > 0)
-                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedCount, c => c.UsedCount - 1), ct);
-            }
-        }
-
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-    }
-
-    private static void EnsureTransition(OrderStatus from, OrderStatus to)
-    {
-        if (!Transitions[from].Contains(to))
-            throw AppException.Conflict($"An order cannot move from {from} to {to}.");
-    }
 
     // ---------- Detail ----------
 

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SportMate.API.Common;
-using SportMate.API.Requests;
 using SportMate.Application.Common;
 using SportMate.Application.DTOs.Requests;
 using SportMate.Application.DTOs.Responses;
@@ -9,13 +8,13 @@ using SportMate.Application.Services;
 
 namespace SportMate.API.Controllers;
 
-/// <summary>Catalog management, shared by Staff and Admin (UC-018 – UC-037).</summary>
+/// <summary>Catalog management, shared by Staff and Admin (UC-018 – UC-030).</summary>
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminCatalogController(
     CategoryBrandService categories,
     ProductService products,
-    VariantImageService variantsAndImages) : ApiControllerBase
+    VariantService variants) : ApiControllerBase
 {
     // ---------- Categories ----------
 
@@ -89,47 +88,7 @@ public class AdminCatalogController(
 
     // ---------- Variants ----------
 
-    [HttpGet("products/{productId:int}/variants")]
-    public async Task<ActionResult<IReadOnlyList<VariantDto>>> ListVariants(int productId, CancellationToken ct) =>
-        Ok(await variantsAndImages.ListVariantsAsync(productId, ct));
-
     [HttpPost("products/{productId:int}/variants")]
     public async Task<ActionResult<VariantDto>> CreateVariant(int productId, CreateVariantRequest request, CancellationToken ct) =>
-        StatusCode(StatusCodes.Status201Created, await variantsAndImages.CreateVariantAsync(CurrentUserId, productId, request, ct));
-
-    [HttpGet("variants/{id:int}")]
-    public async Task<ActionResult<VariantDto>> GetVariant(int id, CancellationToken ct) =>
-        Ok(await variantsAndImages.GetVariantAsync(id, ct));
-
-    [HttpPut("variants/{id:int}")]
-    public async Task<ActionResult<VariantDto>> UpdateVariant(int id, UpdateVariantRequest request, CancellationToken ct) =>
-        Ok(await variantsAndImages.UpdateVariantAsync(id, request, ct));
-
-    [HttpDelete("variants/{id:int}")]
-    public async Task<ActionResult<DeleteResultDto>> DeleteVariant(int id, CancellationToken ct) =>
-        Ok(await variantsAndImages.DeleteVariantAsync(id, ct));
-
-    // ---------- Images ----------
-
-    [HttpGet("products/{productId:int}/images")]
-    public async Task<ActionResult<IReadOnlyList<ImageDto>>> ListImages(int productId, CancellationToken ct) =>
-        Ok(await variantsAndImages.ListImagesAsync(productId, ct));
-
-    /// <summary>Upload an image file (multipart/form-data) or register an image URL.</summary>
-    [HttpPost("products/{productId:int}/images")]
-    [Consumes("multipart/form-data", "application/x-www-form-urlencoded")]
-    [RequestSizeLimit(VariantImageService.MaxImageBytes + 64 * 1024)]
-    public async Task<ActionResult<ImageDto>> AddImage(int productId, [FromForm] AddImageForm form, CancellationToken ct) =>
-        StatusCode(StatusCodes.Status201Created, await variantsAndImages.AddImageAsync(productId, form.ToRequest(), ct));
-
-    [HttpPut("images/{id:int}")]
-    public async Task<ActionResult<ImageDto>> UpdateImage(int id, UpdateImageRequest request, CancellationToken ct) =>
-        Ok(await variantsAndImages.UpdateImageAsync(id, request, ct));
-
-    [HttpDelete("images/{id:int}")]
-    public async Task<IActionResult> DeleteImage(int id, CancellationToken ct)
-    {
-        await variantsAndImages.DeleteImageAsync(id, ct);
-        return NoContent();
-    }
+        StatusCode(StatusCodes.Status201Created, await variants.CreateVariantAsync(CurrentUserId, productId, request, ct));
 }

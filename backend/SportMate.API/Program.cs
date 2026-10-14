@@ -24,9 +24,8 @@ if (string.IsNullOrWhiteSpace(jwt.Key) || Encoding.UTF8.GetByteCount(jwt.Key) < 
         "other environments must set it, e.g. the Jwt__Key environment variable (see backend/README.md).");
 }
 
-var webRoot = builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 builder.Services.AddApplication(builder.Configuration);
-builder.Services.AddInfrastructure(builder.Configuration, webRoot);
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // ---------- Authentication & authorization ----------
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

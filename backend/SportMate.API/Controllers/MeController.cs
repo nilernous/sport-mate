@@ -27,7 +27,7 @@ public class MeController(AuthService auth, AddressService addresses, WishlistSe
     public async Task<ActionResult<AuthResponse>> ChangePassword(ChangePasswordRequest request, CancellationToken ct) =>
         Ok(await auth.ChangePasswordAsync(CurrentUserId, request, ct));
 
-    /// <summary>UC-010 List own delivery addresses.</summary>
+    /// <summary>UC-010 List own delivery addresses, used to pick one at checkout.</summary>
     [HttpGet("addresses")]
     [Authorize(Roles = Roles.Customer)]
     public async Task<ActionResult<IReadOnlyList<AddressDto>>> ListAddresses(CancellationToken ct) =>
@@ -38,21 +38,6 @@ public class MeController(AuthService auth, AddressService addresses, WishlistSe
     [Authorize(Roles = Roles.Customer)]
     public async Task<ActionResult<AddressDto>> CreateAddress(AddressRequest request, CancellationToken ct) =>
         StatusCode(StatusCodes.Status201Created, await addresses.CreateAsync(CurrentUserId, request, ct));
-
-    /// <summary>UC-011 Update own delivery address.</summary>
-    [HttpPut("addresses/{id:int}")]
-    [Authorize(Roles = Roles.Customer)]
-    public async Task<ActionResult<AddressDto>> UpdateAddress(int id, AddressRequest request, CancellationToken ct) =>
-        Ok(await addresses.UpdateAsync(CurrentUserId, id, request, ct));
-
-    /// <summary>UC-012 Delete own delivery address.</summary>
-    [HttpDelete("addresses/{id:int}")]
-    [Authorize(Roles = Roles.Customer)]
-    public async Task<IActionResult> DeleteAddress(int id, CancellationToken ct)
-    {
-        await addresses.DeleteAsync(CurrentUserId, id, ct);
-        return NoContent();
-    }
 
     /// <summary>UC-073 View own wishlist.</summary>
     [HttpGet("wishlist")]

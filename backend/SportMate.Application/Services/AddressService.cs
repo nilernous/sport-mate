@@ -40,43 +40,6 @@ public class AddressService(IApplicationDbContext db)
         return address.ToDto();
     }
 
-    // UC-011: orders keep their own address snapshot, so editing here never changes history (BR-013).
-    public async Task<AddressDto> UpdateAsync(int userId, int addressId, AddressRequest request, CancellationToken ct)
-    {
-        var address = await FindOwnedAsync(userId, addressId, ct);
-        Apply(address, request, DateTime.UtcNow);
-        if (request.IsDefault && !address.IsDefault)
-        {
-            await ClearDefaultAsync(userId, ct);
-            address.IsDefault = true;
-        }
-        await db.SaveChangesAsync(ct);
-        return address.ToDto();
-    }
-
-    // UC-012
-    public async Task DeleteAsync(int userId, int addressId, CancellationToken ct)
-    {
-        var address = await FindOwnedAsync(userId, addressId, ct);
-        db.UserAddresses.Remove(address);
-        await db.SaveChangesAsync(ct);
-
-        if (address.IsDefault)
-        {
-            var next = await db.UserAddresses.Where(a => a.UserId == userId)
-                .OrderByDescending(a => a.UpdatedAt).FirstOrDefaultAsync(ct);
-            if (next is not null)
-            {
-                next.IsDefault = true;
-                await db.SaveChangesAsync(ct);
-            }
-        }
-    }
-
-    public async Task<UserAddress> FindOwnedAsync(int userId, int addressId, CancellationToken ct) =>
-        await db.UserAddresses.SingleOrDefaultAsync(a => a.Id == addressId && a.UserId == userId, ct)
-        ?? throw AppException.NotFound("Address");
-
     private async Task ClearDefaultAsync(int userId, CancellationToken ct) =>
         await db.UserAddresses.Where(a => a.UserId == userId && a.IsDefault)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDefault, false), ct);

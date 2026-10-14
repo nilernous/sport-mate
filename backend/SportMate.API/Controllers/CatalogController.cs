@@ -11,7 +11,7 @@ namespace SportMate.API.Controllers;
 /// <summary>Public catalog: only active products, categories and brands are exposed (BR-002, BR-014).</summary>
 [Route("api/v1")]
 [AllowAnonymous]
-public class CatalogController(CategoryBrandService categories, ProductService products, ReviewService reviews) : ApiControllerBase
+public class CatalogController(CategoryBrandService categories, ProductService products) : ApiControllerBase
 {
     [HttpGet("categories")]
     public async Task<ActionResult<IReadOnlyList<CategoryDto>>> ListCategories([FromQuery] CatalogListQuery query, CancellationToken ct) =>
@@ -43,40 +43,4 @@ public class CatalogController(CategoryBrandService categories, ProductService p
     [HttpGet("products/{id:int}")]
     public async Task<ActionResult<ProductDetailDto>> GetProduct(int id, CancellationToken ct) =>
         Ok(await products.GetPublicAsync(id, ct));
-
-    /// <summary>UC-069 View approved reviews of a product.</summary>
-    [HttpGet("products/{id:int}/reviews")]
-    public async Task<ActionResult<ProductReviewsDto>> ListReviews(int id, [FromQuery] PageQuery query, CancellationToken ct) =>
-        Ok(await reviews.ListForProductAsync(id, query, ct));
-
-    /// <summary>The caller's review of this product, and whether they may write one.</summary>
-    [HttpGet("products/{id:int}/reviews/me")]
-    [Authorize(Roles = Roles.Customer)]
-    public async Task<ActionResult<MyReviewStatusDto>> GetMyReview(int id, CancellationToken ct) =>
-        Ok(await reviews.GetMyStatusAsync(CurrentUserId, id, ct));
-
-    /// <summary>UC-068 Create a review for a purchased product.</summary>
-    [HttpPost("products/{id:int}/reviews")]
-    [Authorize(Roles = Roles.Customer)]
-    public async Task<ActionResult<ReviewDto>> CreateReview(int id, ReviewRequest request, CancellationToken ct) =>
-        StatusCode(StatusCodes.Status201Created, await reviews.CreateAsync(CurrentUserId, id, request, ct));
-}
-
-[Route("api/v1/reviews")]
-[Authorize]
-public class ReviewsController(ReviewService reviews) : ApiControllerBase
-{
-    /// <summary>UC-070 Update own review.</summary>
-    [HttpPut("{id:int}")]
-    [Authorize(Roles = Roles.Customer)]
-    public async Task<ActionResult<ReviewDto>> Update(int id, ReviewRequest request, CancellationToken ct) =>
-        Ok(await reviews.UpdateOwnAsync(CurrentUserId, id, request, ct));
-
-    /// <summary>UC-071 Delete own review (Staff/Admin may delete any review).</summary>
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    {
-        await reviews.DeleteAsync(CurrentUserId, User.IsStaffOrAdmin(), id, ct);
-        return NoContent();
-    }
 }

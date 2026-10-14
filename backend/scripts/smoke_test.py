@@ -3,7 +3,6 @@
 Run against a freshly seeded Development database: python scripts/smoke_test.py
 Requires: pip install requests
 """
-import io
 import sys
 import uuid
 import threading
@@ -67,11 +66,9 @@ call("POST", "/auth/reset-password", json={"token": "bad", "newPassword": "abc12
 call("GET", "/users/me", expect=401)
 
 # --- Authorization boundaries ---
-call("GET", "/admin/users", staff, expect=403)
-call("GET", "/admin/coupons", staff, expect=403)
-call("GET", "/admin/dashboard/summary", staff, expect=403)
-call("GET", "/admin/orders", cust, expect=403)
-call("GET", "/admin/orders", staff, expect=200)
+call("GET", "/admin/products", cust, expect=403)
+call("GET", "/admin/products", staff, expect=200)
+call("GET", "/admin/products", admin, expect=200)
 call("GET", "/cart", staff, expect=403)
 
 # --- Catalog (public) ---
@@ -96,28 +93,14 @@ r, p = call("POST", "/admin/products", staff, json={"name": "Test Shoe", "catego
 pid = p["id"]
 call("POST", "/admin/products", staff, json={"name": "Bad", "categoryId": 99999, "brandId": brand["id"], "basePrice": 1}, expect=400)
 sku = "TST-" + uuid.uuid4().hex[:6]
-r, v = call("POST", f"/admin/products/{pid}/variants", staff, json={"sku": sku, "size": "42", "color": "Red", "price": 120000, "initialStock": 2}, expect=201)
+r, v = call("POST", f"/admin/products/{pid}/variants", staff, json={"sku": sku, "size": "42", "color": "Red", "price": 150000, "initialStock": 5}, expect=201)
 call("POST", f"/admin/products/{pid}/variants", staff, json={"sku": sku.lower(), "size": "43", "color": "Red", "price": 1, "initialStock": 0}, expect=409)
-call("PUT", f"/admin/variants/{v['id']}", staff, json={"sku": sku, "size": "42", "color": "Red", "price": 150000, "isActive": True}, expect=200)
-r, img = call("POST", f"/admin/products/{pid}/images", staff, data={"url": "https://picsum.photos/200", "altText": "x"}, expect=201)
-png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
-r, img2 = call("POST", f"/admin/products/{pid}/images", staff, files={"file": ("a.png", io.BytesIO(png), "image/png")}, expect=201)
-if img2:
-    rr = requests.get("http://localhost:5005" + img2["url"])
-    check("uploaded image served", rr.status_code == 200, rr.status_code)
-call("POST", f"/admin/products/{pid}/images", staff, files={"file": ("a.txt", io.BytesIO(b"hi"), "text/plain")}, expect=400)
-call("PUT", f"/admin/images/{img2['id']}", staff, json={"altText": "primary", "displayOrder": 0, "isPrimary": True}, expect=200)
-r, imgs = call("GET", f"/admin/products/{pid}/images", staff, expect=200)
-check("one primary", sum(1 for i in imgs if i["isPrimary"]) == 1, imgs)
-call("DELETE", f"/admin/images/{img['id']}", staff, expect=204)
+def stock():
+    detail = call("GET", f"/admin/products/{pid}", staff)[1]
+    return next(x for x in detail["variants"] if x["id"] == v["id"])["stockQuantity"]
 
-# --- Inventory ---
-call("PATCH", f"/admin/variants/{v['id']}/stock", staff, json={"quantityChange": -5, "reason": "Damaged"}, expect=409)
-r, inv = call("PATCH", f"/admin/variants/{v['id']}/stock", staff, json={"quantityChange": 3, "reason": "Restock"}, expect=200)
-check("stock adjusted", inv["stockQuantity"] == 5, inv)
-r, mv = call("GET", f"/admin/inventory/movements?variantId={v['id']}", staff, expect=200)
-check("movements", mv["totalItems"] == 2, mv["totalItems"])
-call("GET", "/admin/inventory?maxStock=3", staff, expect=200)
+
+check("initial stock", stock() == 5, stock())
 
 # --- Cart ---
 call("DELETE", "/cart", cust, expect=204)
@@ -136,10 +119,8 @@ addr_id = addrs[0]["id"]
 r, other_addr = call("POST", "/users/me/addresses", other, json={"recipientName": "O", "phoneNumber": "0900000000", "addressLine": "1 A", "ward": "W", "district": "D", "city": "C"}, expect=201)
 r, pv = call("POST", "/checkout/preview", cust, json={"addressId": addr_id, "shippingMethod": "Standard"}, expect=200)
 check("preview totals", pv["subtotal"] == 450000 and pv["shippingFee"] == 30000 and pv["total"] == 480000, pv)
-r, pv = call("POST", "/checkout/preview", cust, json={"addressId": addr_id, "shippingMethod": "Standard", "couponCode": "WELCOME10"}, expect=200)
-check("coupon min order rejected", pv["coupon"]["isValid"] is False and not pv["canPlaceOrder"], pv["coupon"])
-r, vc = call("POST", "/coupons/validate", cust, json={"code": "EXPIRED20"}, expect=200)
-check("expired coupon", vc["isValid"] is False, vc)
+r, pv = call("POST", "/checkout/preview", cust, json={"addressId": other_addr["id"], "shippingMethod": "Standard"}, expect=200)
+check("foreign address rejected", not pv["canPlaceOrder"], pv["problems"])
 call("POST", "/orders", cust, json={"addressId": other_addr["id"], "shippingMethod": "Standard", "paymentMethod": "COD"}, expect=400)
 # Client-sent totals are ignored
 key = uuid.uuid4().hex
@@ -152,9 +133,7 @@ r, order_again = call("POST", "/orders", cust, headers={"Idempotency-Key": key},
 check("idempotent", order_again["id"] == order["id"])
 r, cart = call("GET", "/cart", cust, expect=200)
 check("cart cleared", len(cart["items"]) == 0, cart)
-r, inv = call("GET", f"/admin/inventory?variantId={v['id']}", staff, expect=200)
-check("stock deducted", inv["items"][0]["stockQuantity"] == 2, inv["items"][0])
-call("GET", f"/orders/{order['id']}", other, expect=404)
+check("stock deducted", stock() == 2, stock())
 call("POST", "/orders", cust, json={"addressId": addr_id, "shippingMethod": "Standard", "paymentMethod": "COD"}, expect=409)  # empty cart
 
 # --- Concurrency: two customers race for the last 2 units ---
@@ -167,66 +146,7 @@ def place(tok, addr, name):
 t1 = threading.Thread(target=place, args=(cust, addr_id, "a")); t2 = threading.Thread(target=place, args=(other, other_addr["id"], "b"))
 t1.start(); t2.start(); t1.join(); t2.join()
 check("no oversell", sorted(results.values()) == [201, 409], results)
-r, inv = call("GET", f"/admin/inventory?variantId={v['id']}", staff, expect=200)
-check("stock zero not negative", inv["items"][0]["stockQuantity"] == 0, inv["items"][0])
-
-# --- Payments & order status ---
-pay_id = order["payment"]["id"]
-call("POST", f"/orders/{order['id']}/payment", cust, json={"method": "COD"}, expect=200)
-call("POST", f"/orders/{order['id']}/payment", cust, json={"method": "BankTransfer"}, expect=200)
-call("PATCH", f"/admin/orders/{order['id']}/status", staff, json={"status": "Shipping"}, expect=409)  # invalid transition
-call("PATCH", f"/admin/payments/{pay_id}/confirm", staff, json={"amount": 1, "transferReference": order["orderCode"]}, expect=400)
-r, paid = call("PATCH", f"/admin/payments/{pay_id}/confirm", staff, json={"amount": 500000, "transferReference": order["orderCode"]}, expect=200)
-check("paid", paid["status"] == "Paid" and paid["confirmedBy"], paid)
-call("PATCH", f"/admin/payments/{pay_id}/confirm", staff, json={"amount": 500000, "transferReference": order["orderCode"]}, expect=409)
-r, od = call("GET", f"/orders/{order['id']}", cust, expect=200)
-check("auto-confirmed", od["status"] == "Confirmed", od["status"])
-call("PATCH", f"/admin/orders/{order['id']}/status", staff, json={"status": "Shipping"}, expect=200)
-call("POST", f"/orders/{order['id']}/cancel", cust, expect=409)  # shipped
-r, od = call("PATCH", f"/admin/orders/{order['id']}/status", staff, json={"status": "Completed"}, expect=200)
-check("history", len(od["statusHistory"]) == 4, od["statusHistory"])
-
-# --- Cancel restores stock and coupon ---
-r, prods = call("GET", "/products?keyword=Pegasus", expect=200)
-pdet = call("GET", f"/products/{prods['items'][0]['id']}")[1]
-var = next(x for x in pdet["variants"] if x["stockQuantity"] >= 5)
-# Whoever lost the race above still has the sold-out item in their cart; start clean.
-call("DELETE", "/cart", cust, expect=204)
-call("POST", "/cart/items", cust, json={"variantId": var["id"], "quantity": 1}, expect=200)
-r, o2 = call("POST", "/orders", cust, json={"addressId": addr_id, "shippingMethod": "Standard", "paymentMethod": "COD", "couponCode": "SALE50K"}, expect=201)
-check("coupon discount", o2["discountAmount"] == 50000, o2.get("discountAmount"))
-r, c = call("GET", "/admin/coupons?keyword=SALE50K", admin, expect=200)
-check("coupon used", c["items"][0]["usedCount"] == 1, c["items"][0])
-r, oc = call("POST", f"/orders/{o2['id']}/cancel", cust, json={"reason": "changed mind"}, expect=200)
-check("cancelled", oc["status"] == "Cancelled" and oc["payment"]["status"] == "Failed", oc["status"])
-call("POST", f"/orders/{o2['id']}/cancel", cust, expect=409)
-r, after = call("GET", f"/products/{pdet['id']}")
-var_after = next(x for x in after["variants"] if x["id"] == var["id"])
-check("stock restored once", var_after["stockQuantity"] == var["stockQuantity"], (var, var_after))
-r, c = call("GET", "/admin/coupons?keyword=SALE50K", admin, expect=200)
-check("coupon released", c["items"][0]["usedCount"] == 0, c["items"][0])
-
-# --- COD completion marks paid ---
-r, list_ = call("GET", "/admin/orders?keyword=SMDEMO0003", staff, expect=200)
-demo3 = list_["items"][0]
-r, d3 = call("PATCH", f"/admin/orders/{demo3['id']}/status", staff, json={"status": "Completed"}, expect=200)
-check("COD paid on delivery", d3["payment"]["status"] == "Paid", d3["payment"])
-
-# --- Reviews ---
-r, mine = call("GET", f"/products/{pid}/reviews/me", cust, expect=200)
-check("can review completed purchase", mine["canReview"] is True, mine)
-r, rev = call("POST", f"/products/{pid}/reviews", cust, json={"rating": 4, "comment": "ok"}, expect=201)
-call("POST", f"/products/{pid}/reviews", cust, json={"rating": 4}, expect=409)
-call("POST", f"/products/{pid}/reviews", other, json={"rating": 5}, expect=403)
-call("POST", f"/products/{pid}/reviews", cust, json={"rating": 6}, expect=400)
-call("PUT", f"/reviews/{rev['id']}", cust, json={"rating": 5, "comment": "great"}, expect=200)
-call("PUT", f"/reviews/{rev['id']}", other, json={"rating": 1}, expect=404)
-call("PATCH", f"/admin/reviews/{rev['id']}/status", staff, json={"status": "Hidden"}, expect=200)
-r, pr = call("GET", f"/products/{pid}/reviews", expect=200)
-check("hidden excluded", pr["summary"]["reviewCount"] == 0, pr["summary"])
-call("PATCH", f"/admin/reviews/{rev['id']}/status", staff, json={"status": "Approved"}, expect=200)
-r, pr = call("GET", f"/products/{pid}/reviews", expect=200)
-check("approved shown", pr["summary"]["reviewCount"] == 1 and pr["summary"]["averageRating"] == 5, pr["summary"])
+check("stock zero not negative", stock() == 0, stock())
 
 # --- Wishlist ---
 call("POST", "/users/me/wishlist/items", cust, json={"productId": pid}, expect=201)
@@ -246,41 +166,8 @@ r, c2 = call("POST", "/admin/categories", staff, json={"name": "Temp " + uuid.uu
 r, d = call("DELETE", f"/admin/categories/{c2['id']}", staff, expect=200)
 check("category deleted", d["action"] == "Deleted", d)
 
-# --- Coupons admin ---
-code = "T" + uuid.uuid4().hex[:6].upper()
-r, cp = call("POST", "/admin/coupons", admin, json={"code": code, "discountType": "Percentage", "discountValue": 150, "minOrderAmount": 0,
-                                                    "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2027-01-01T00:00:00Z"}, expect=400)
-r, cp = call("POST", "/admin/coupons", admin, json={"code": code, "discountType": "Percentage", "discountValue": 20, "minOrderAmount": 0,
-                                                    "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2027-01-01T00:00:00Z"}, expect=201)
-call("POST", "/admin/coupons", admin, json={"code": code.lower(), "discountType": "FixedAmount", "discountValue": 1, "minOrderAmount": 0,
-                                            "startsAt": "2026-01-01T00:00:00Z", "endsAt": "2027-01-01T00:00:00Z"}, expect=409)
-call("GET", f"/admin/coupons/{cp['id']}", admin, expect=200)
-r, d = call("DELETE", f"/admin/coupons/{cp['id']}", admin, expect=200)
-check("unused coupon deleted", d["action"] == "Deleted", d)
-
-# --- Users admin ---
-r, users = call("GET", "/admin/users?role=Admin", admin, expect=200)
-admin_id = users["items"][0]["id"]
-call("PATCH", f"/admin/users/{admin_id}/status", admin, json={"isActive": False}, expect=409)
-r, nu = call("POST", "/admin/users", admin, json={"fullName": "Staff Two", "email": f"s{uuid.uuid4().hex[:5]}@sm.vn", "password": "abc12345", "role": "Staff"}, expect=201)
-call("PATCH", f"/admin/users/{nu['id']}/role", admin, json={"role": "Customer"}, expect=200)
-call("PUT", f"/admin/users/{nu['id']}", admin, json={"fullName": "Renamed", "email": nu["email"]}, expect=200)
-r, ou = call("GET", "/users/me", other, expect=200)
-call("PATCH", f"/admin/users/{ou['id']}/status", admin, json={"isActive": False}, expect=200)
-call("GET", "/users/me", other, expect=401)
-call("POST", "/auth/login", json={"email": email, "password": "xyz98765"}, expect=403)
-call("GET", f"/admin/users/{ou['id']}", admin, expect=200)
-
-# --- Reports ---
-r, dash = call("GET", "/admin/dashboard/summary", admin, expect=200)
-check("dashboard revenue", dash["revenue"] > 0 and len(dash["dailyRevenue"]) == 30, {k: dash[k] for k in ("revenue", "totalOrders")})
-call("GET", "/admin/dashboard/summary?from=2026-10-10&to=2026-01-01", admin, expect=400)
-call("GET", "/admin/reports/orders?groupBy=status", admin, expect=200)
-r, top = call("GET", "/admin/reports/top-products?limit=5", admin, expect=200)
-check("top products", len(top["products"]) > 0, top)
-
 # --- Error shape ---
-r, err = call("GET", "/admin/users", staff, expect=403)
+r, err = call("GET", "/admin/products", cust, expect=403)
 print("403 body:", r.text[:200])
 r, err = call("GET", "/products/999999", expect=404)
 check("problem details", err and err.get("status") == 404 and "title" in err, err)
