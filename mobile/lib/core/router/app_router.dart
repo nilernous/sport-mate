@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/admin/admin_home_screen.dart';
 import '../../screens/admin/catalog_setup_screen.dart';
+import '../../screens/admin/coupon_screens.dart';
+import '../../screens/admin/inventory_screens.dart';
+import '../../screens/admin/order_admin_screens.dart';
 import '../../screens/admin/product_admin_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
@@ -27,6 +29,9 @@ const _customerOnly = ['/cart', '/checkout', '/orders', '/wishlist', '/addresses
 
 /// Routes for any signed-in user.
 const _signedInOnly = ['/account/edit', '/account/password'];
+
+/// Admin Panel items hidden from Staff (BR-005, BR-067).
+const _adminOnly = ['/admin/coupons'];
 
 bool _under(String location, String prefix) => location == prefix || location.startsWith('$prefix/');
 
@@ -55,6 +60,7 @@ String? _redirect(AuthState auth, GoRouterState state) {
 
   if (needsCustomer && !auth.isCustomer) return home;
   if (_under(location, '/admin') && !auth.isStaffOrAdmin) return '/home';
+  if (_adminOnly.any((p) => _under(location, p)) && !auth.isAdmin) return '/admin';
   return null;
 }
 
@@ -106,10 +112,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Customer
       page('/checkout', (_) => const CheckoutScreen()),
-      page('/orders/confirmation', (s) => OrderConfirmationScreen(order: s.extra as OrderDetail?)),
+      page('/orders', (_) => const OrderListScreen()),
+      page('/orders/:id', (s) => OrderDetailScreen(orderId: idParam(s), justPlaced: s.uri.queryParameters['placed'] == '1')),
       page('/wishlist', (_) => const WishlistScreen()),
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
       page('/addresses/new', (_) => const AddressFormScreen()),
+      page('/addresses/:id/edit', (s) => AddressFormScreen(addressId: idParam(s))),
       page('/account/edit', (_) => const EditProfileScreen()),
       page('/account/password', (_) => const ChangePasswordScreen()),
 
@@ -118,6 +126,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       page('/admin/products/new', (_) => const AdminProductEditScreen()),
       page('/admin/products/:id', (s) => AdminProductEditScreen(productId: idParam(s))),
       page('/admin/catalog-setup', (_) => const CatalogSetupScreen()),
+      page('/admin/inventory', (_) => const InventoryScreen()),
+      page('/admin/inventory/movements', (s) => StockMovementsScreen(
+            variantId: int.tryParse(s.uri.queryParameters['variantId'] ?? ''),
+            title: s.uri.queryParameters['title'],
+          )),
+      page('/admin/orders', (_) => const AdminOrderListScreen()),
+      page('/admin/orders/:id', (s) => AdminOrderDetailScreen(orderId: idParam(s))),
+
+      // Admin only
+      page('/admin/coupons', (_) => const CouponListScreen()),
+      page('/admin/coupons/new', (_) => const CouponFormScreen()),
+      page('/admin/coupons/:id', (s) => CouponFormScreen(couponId: idParam(s))),
     ],
   );
 });

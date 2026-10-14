@@ -3,16 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/validators.dart';
+import '../../models/user.dart';
 import '../../providers/shopping_providers.dart';
 import '../../services/shopping_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/state_views.dart';
 
-/// Saved delivery addresses and adding a new one (UC-009). In select mode a tap returns the address to checkout.
+/// Delivery address book (UC-009 – UC-012). In select mode a tap returns the address to checkout.
 class AddressListScreen extends ConsumerWidget {
   const AddressListScreen({super.key, this.selectMode = false});
 
   final bool selectMode;
+
+  Future<void> _delete(BuildContext context, WidgetRef ref, Address a) async {
+    if (!await confirmDialog(context, title: 'Delete address', message: 'Delete the address of ${a.recipientName}?', confirmLabel: 'Delete', destructive: true)) return;
+    if (!context.mounted) return;
+    final ok = await runGuarded(context, () => ref.read(addressServiceProvider).delete(a.id), success: 'Address deleted');
+    if (ok) ref.invalidate(addressesProvider);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,6 +56,20 @@ class AddressListScreen extends ConsumerWidget {
                       ]),
                       subtitle: Text('${a.phoneNumber}\n${a.fullAddress}'),
                       isThreeLine: true,
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (action) async {
+                          if (action == 'edit') {
+                            await context.push('/addresses/${a.id}/edit');
+                            ref.invalidate(addressesProvider);
+                          } else {
+                            await _delete(context, ref, a);
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -58,7 +80,9 @@ class AddressListScreen extends ConsumerWidget {
 }
 
 class AddressFormScreen extends ConsumerStatefulWidget {
-  const AddressFormScreen({super.key});
+  const AddressFormScreen({super.key, this.addressId});
+
+  final int? addressId;
 
   @override
   ConsumerState<AddressFormScreen> createState() => _AddressFormScreenState();
@@ -73,6 +97,34 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
   final _district = TextEditingController();
   final _city = TextEditingController();
   bool _isDefault = false;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.addressId == null) {
+      _loaded = true;
+    } else {
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    try {
+      final list = await ref.read(addressServiceProvider).list();
+      final a = list.firstWhere((x) => x.id == widget.addressId);
+      _name.text = a.recipientName;
+      _phone.text = a.phoneNumber;
+      _line.text = a.addressLine;
+      _ward.text = a.ward;
+      _district.text = a.district;
+      _city.text = a.city;
+      _isDefault = a.isDefault;
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+    if (mounted) setState(() => _loaded = true);
+  }
 
   @override
   void dispose() {
@@ -93,7 +145,12 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
       'city': _city.text.trim(),
       'isDefault': _isDefault,
     };
-    final ok = await runGuarded(context, () => ref.read(addressServiceProvider).create(data), success: 'Address saved');
+    final service = ref.read(addressServiceProvider);
+    final ok = await runGuarded(
+      context,
+      () => widget.addressId == null ? service.create(data) : service.update(widget.addressId!, data),
+      success: 'Address saved',
+    );
     if (ok && mounted) context.pop();
   }
 
@@ -110,26 +167,28 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('New address')),
-      body: Form(
-        key: _form,
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          field(_name, 'Recipient name'),
-          field(_phone, 'Phone number', type: TextInputType.phone, validator: (v) => Validators.phone(v, required: true)),
-          field(_line, 'Street address'),
-          field(_ward, 'Ward'),
-          field(_district, 'District'),
-          field(_city, 'City / Province'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Use as default address'),
-            value: _isDefault,
-            onChanged: (v) => setState(() => _isDefault = v),
-          ),
-          const SizedBox(height: 16),
-          BusyButton(label: 'Save address', onPressed: _save),
-        ]),
-      ),
+      appBar: AppBar(title: Text(widget.addressId == null ? 'New address' : 'Edit address')),
+      body: !_loaded
+          ? const LoadingView()
+          : Form(
+              key: _form,
+              child: ListView(padding: const EdgeInsets.all(16), children: [
+                field(_name, 'Recipient name'),
+                field(_phone, 'Phone number', type: TextInputType.phone, validator: (v) => Validators.phone(v, required: true)),
+                field(_line, 'Street address'),
+                field(_ward, 'Ward'),
+                field(_district, 'District'),
+                field(_city, 'City / Province'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Use as default address'),
+                  value: _isDefault,
+                  onChanged: (v) => setState(() => _isDefault = v),
+                ),
+                const SizedBox(height: 16),
+                BusyButton(label: 'Save address', onPressed: _save),
+              ]),
+            ),
     );
   }
 }

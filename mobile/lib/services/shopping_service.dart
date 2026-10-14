@@ -34,6 +34,10 @@ class AddressService {
       (await _api.get<List<dynamic>>(ApiEndpoints.myAddresses)).map((e) => Address.fromJson(e as Json)).toList();
 
   Future<Address> create(Json data) async => Address.fromJson(await _api.post<Json>(ApiEndpoints.myAddresses, data: data));
+
+  Future<Address> update(int id, Json data) async => Address.fromJson(await _api.put<Json>(ApiEndpoints.myAddress(id), data: data));
+
+  Future<void> delete(int id) => _api.delete<void>(ApiEndpoints.myAddress(id));
 }
 
 class OrderService {
@@ -41,17 +45,22 @@ class OrderService {
 
   final ApiClient _api;
 
-  Future<CheckoutPreview> preview({int? addressId, required ShippingMethod shippingMethod}) async =>
+  Future<CheckoutPreview> preview({int? addressId, required ShippingMethod shippingMethod, String? couponCode}) async =>
       CheckoutPreview.fromJson(await _api.post<Json>(ApiEndpoints.checkoutPreview, data: {
         'addressId': addressId,
         'shippingMethod': shippingMethod.apiName,
+        'couponCode': couponCode,
       }));
+
+  Future<CouponCheck> validateCoupon(String code) async =>
+      CouponCheck.fromJson(await _api.post<Json>(ApiEndpoints.validateCoupon, data: {'code': code.trim()}));
 
   /// [idempotencyKey] makes a retried submission return the same order instead of a duplicate.
   Future<OrderDetail> place({
     required int addressId,
     required ShippingMethod shippingMethod,
     required PaymentMethod paymentMethod,
+    String? couponCode,
     String? note,
     required String idempotencyKey,
   }) async =>
@@ -62,9 +71,25 @@ class OrderService {
           'addressId': addressId,
           'shippingMethod': shippingMethod.apiName,
           'paymentMethod': paymentMethod.apiName,
+          'couponCode': couponCode,
           'note': note,
         },
       ));
+
+  Future<Paged<OrderSummary>> list({OrderStatus? status, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.orders, query: {'status': status?.apiName, 'page': page, 'pageSize': 20}),
+        OrderSummary.fromJson,
+      );
+
+  Future<OrderDetail> get(int id) async => OrderDetail.fromJson(await _api.get<Json>(ApiEndpoints.order(id)));
+
+  Future<OrderDetail> cancel(int id, {String? reason}) async =>
+      OrderDetail.fromJson(await _api.post<Json>(ApiEndpoints.cancelOrder(id), data: {'reason': reason}));
+
+  Future<Payment> payment(int orderId) async => Payment.fromJson(await _api.get<Json>(ApiEndpoints.orderPayment(orderId)));
+
+  Future<Payment> choosePaymentMethod(int orderId, PaymentMethod method) async =>
+      Payment.fromJson(await _api.post<Json>(ApiEndpoints.orderPayment(orderId), data: {'method': method.apiName}));
 }
 
 class WishlistService {
