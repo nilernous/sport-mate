@@ -23,4 +23,8 @@ public static class MappingExtensions
     public static OrderItemDto ToDto(this OrderItem i) =>
         new(i.Id, i.ProductId, i.VariantId, i.ProductName, i.Sku, i.Size, i.Color, i.ImageUrl, i.UnitPrice, i.Quantity, i.LineTotal);
 
+    public static CouponDto ToDto(this Coupon c) =>
+        new(c.Id, c.Code, c.Description, c.DiscountType, c.DiscountValue, c.MaxDiscountAmount, c.MinOrderAmount,
+            c.ApplicableCategoryId, c.ApplicableCategory?.Name, c.StartsAt, c.EndsAt, c.UsageLimit, c.PerUserLimit,
+            c.UsedCount, c.IsActive, c.CreatedAt, c.UpdatedAt);
 }

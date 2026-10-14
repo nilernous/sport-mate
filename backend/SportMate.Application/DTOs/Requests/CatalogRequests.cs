@@ -75,6 +75,24 @@ public class CreateVariantRequest
     public bool IsActive { get; init; } = true;
 }
 
+/// <summary>Stock is intentionally not editable here; use the inventory adjustment endpoint (BR-027).</summary>
+public class UpdateVariantRequest
+{
+    [Required, StringLength(64, MinimumLength = 2)]
+    public string Sku { get; init; } = string.Empty;
+
+    [Required, StringLength(20)]
+    public string Size { get; init; } = string.Empty;
+
+    [Required, StringLength(50)]
+    public string Color { get; init; } = string.Empty;
+
+    [Range(typeof(decimal), "0", "1000000000")]
+    public decimal Price { get; init; }
+
+    public bool IsActive { get; init; } = true;
+}
+
 public class ProductQuery : PageQuery
 {
     [StringLength(100)]

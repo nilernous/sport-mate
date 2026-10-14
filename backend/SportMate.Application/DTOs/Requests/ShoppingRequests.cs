@@ -26,6 +26,9 @@ public class CheckoutPreviewRequest
 
     [EnumDataType(typeof(ShippingMethod))]
     public ShippingMethod ShippingMethod { get; init; } = ShippingMethod.Standard;
+
+    [StringLength(50)]
+    public string? CouponCode { get; init; }
 }
 
 /// <summary>
@@ -42,12 +45,156 @@ public class PlaceOrderRequest
     [Required, EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod? PaymentMethod { get; init; }
 
+    [StringLength(50)]
+    public string? CouponCode { get; init; }
+
     [StringLength(500)]
     public string? Note { get; init; }
+}
+
+public class CancelOrderRequest
+{
+    [StringLength(500)]
+    public string? Reason { get; init; }
+}
+
+public class UpdateOrderStatusRequest
+{
+    [Required, EnumDataType(typeof(OrderStatus))]
+    public OrderStatus? Status { get; init; }
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
+public class OrderQuery : PageQuery
+{
+    public OrderStatus? Status { get; init; }
+}
+
+public class AdminOrderQuery : PageQuery
+{
+    /// <summary>Matches order code, customer name or customer email.</summary>
+    [StringLength(100)]
+    public string? Keyword { get; init; }
+
+    public OrderStatus? Status { get; init; }
+    public PaymentStatus? PaymentStatus { get; init; }
+    public int? CustomerId { get; init; }
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+}
+
+public class InitiatePaymentRequest
+{
+    [Required, EnumDataType(typeof(PaymentMethod))]
+    public PaymentMethod? Method { get; init; }
+}
+
+public class ConfirmPaymentRequest
+{
+    /// <summary>Amount actually received, checked against the amount due (BR-052).</summary>
+    [Range(typeof(decimal), "0", "1000000000000")]
+    public decimal Amount { get; init; }
+
+    [Required, StringLength(100, MinimumLength = 3)]
+    public string TransferReference { get; init; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
+public class UpdatePaymentStatusRequest
+{
+    [Required, EnumDataType(typeof(PaymentStatus))]
+    public PaymentStatus? Status { get; init; }
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
+public class CouponRequest
+{
+    [Required, StringLength(50, MinimumLength = 3), RegularExpression("^[A-Za-z0-9_-]+$", ErrorMessage = "Code may contain letters, digits, '-' and '_' only.")]
+    public string Code { get; init; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Description { get; init; }
+
+    [Required, EnumDataType(typeof(DiscountType))]
+    public DiscountType? DiscountType { get; init; }
+
+    [Range(typeof(decimal), "0.01", "1000000000")]
+    public decimal DiscountValue { get; init; }
+
+    [Range(typeof(decimal), "0.01", "1000000000")]
+    public decimal? MaxDiscountAmount { get; init; }
+
+    [Range(typeof(decimal), "0", "1000000000")]
+    public decimal MinOrderAmount { get; init; }
+
+    public int? ApplicableCategoryId { get; init; }
+
+    public DateTime StartsAt { get; init; }
+    public DateTime EndsAt { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int? UsageLimit { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int? PerUserLimit { get; init; }
+
+    public bool IsActive { get; init; } = true;
+}
+
+public class CouponQuery : PageQuery
+{
+    [StringLength(50)]
+    public string? Keyword { get; init; }
+
+    public bool? IsActive { get; init; }
+}
+
+public class ValidateCouponRequest
+{
+    [Required, StringLength(50)]
+    public string Code { get; init; } = string.Empty;
 }
 
 public class AddWishlistItemRequest
 {
     [Range(1, int.MaxValue)]
     public int ProductId { get; init; }
+}
+
+public class AdjustStockRequest
+{
+    /// <summary>Positive to add stock, negative to remove. Zero is rejected.</summary>
+    [Range(-1_000_000, 1_000_000)]
+    public int QuantityChange { get; init; }
+
+    [Required, StringLength(500, MinimumLength = 3)]
+    public string Reason { get; init; } = string.Empty;
+}
+
+public class InventoryQuery : PageQuery
+{
+    [StringLength(100)]
+    public string? Keyword { get; init; }
+
+    public int? ProductId { get; init; }
+    public int? VariantId { get; init; }
+
+    /// <summary>Only variants at or below this stock level.</summary>
+    [Range(0, int.MaxValue)]
+    public int? MaxStock { get; init; }
+}
+
+public class StockMovementQuery : PageQuery
+{
+    public int? VariantId { get; init; }
+    public int? ProductId { get; init; }
+    public StockMovementType? Type { get; init; }
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
 }
