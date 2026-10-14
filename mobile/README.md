@@ -4,7 +4,7 @@ Flutter · Material 3 · Riverpod · GoRouter · Dio. Structure follows `docs/md
 
 ## Run
 
-Start the backend first (see `backend/README.md`), then:
+Start the backend first (see `backend/README.md`), then;
 
 ```bash
 cd mobile
@@ -39,12 +39,12 @@ lib/
 The role comes from the sign-in response. The app shows or hides features by role, but this is
 only for usability: the API re-checks every request.
 
-| Role | Bottom tabs | Extra screens |
-|---|---|---|
-| Guest | Home, Shop, Cart, Account | Cart, wishlist and checkout ask the user to sign in |
-| Customer | Home, Shop, Cart, Account | Orders, wishlist, addresses, reviews |
-| Staff | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory, reviews |
-| Admin | Manage, Home, Shop, Account | Everything Staff has, plus dashboard & reports, coupons, users |
+| Role     | Bottom tabs                 | Extra screens                                                        |
+| -------- | --------------------------- | -------------------------------------------------------------------- |
+| Guest    | Home, Shop, Cart, Account   | Cart, wishlist and checkout ask the user to sign in                  |
+| Customer | Home, Shop, Cart, Account   | Orders, wishlist, addresses, reviews                                 |
+| Staff    | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory, reviews |
+| Admin    | Manage, Home, Shop, Account | Everything Staff has, plus dashboard & reports, coupons, users       |
 
 Route guards in `core/router/app_router.dart` keep each role off pages it cannot use. For example,
 Staff opening `/admin/users` are redirected to the panel.
