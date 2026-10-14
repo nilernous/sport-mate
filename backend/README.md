@@ -47,6 +47,8 @@ dotnet run --launch-profile http                      # http://localhost:5005/sw
 | Staff    | `staff@sportmate.vn`    | `Staff@123`    |
 | Customer | `customer@sportmate.vn` | `Customer@123` |
 
+Demo coupons: `WELCOME10`, `SALE50K`, `RUN15` (running shoes only), `EXPIRED20` (expired).
+
 ### Smoke test
 
 With the API running on a freshly seeded database:
@@ -56,7 +58,7 @@ pip install requests
 python scripts/smoke_test.py
 ```
 
-It exercises the Iteration 1 endpoints, the role boundaries and a concurrent checkout. To reseed, drop
+It exercises the Iteration 1 and 2 endpoints, the role boundaries and a concurrent checkout. To reseed, drop
 `SportMateDb` and restart the API.
 
 ## API conventions
@@ -64,11 +66,11 @@ It exercises the Iteration 1 endpoints, the role boundaries and a concurrent che
 - Base path `/api/v1`; JSON with camelCase properties and enums as strings; money in VND (`decimal(18,2)`).
 - Lists return `{ items, page, pageSize, totalItems, totalPages }` (`page`, `pageSize` ≤ 100).
 - Errors are RFC 7807 Problem Details (`type`, `title`, `status`, `detail`, optional `errors`).
-- `/admin/*` is shared by **Staff and Admin**. The mobile app hides features by role, but the API
-  enforces every check.
-- Customer-only endpoints: addresses, cart, checkout, placing orders, wishlist.
-- This branch serves **Iteration 1** only. The data model (entities, migration, seed data) already
-  covers all iterations, so later iterations add endpoints without a new migration.
+- `/admin/*` is shared by **Staff and Admin**. Coupons are **Admin only** (Staff get 403). The mobile
+  app hides features by role, but the API enforces every check.
+- Customer-only endpoints: addresses, cart, checkout, orders, payments, wishlist.
+- This branch serves **Iterations 1 and 2**. The data model (entities, migration, seed data) already
+  covers all iterations, so Iteration 3 adds endpoints without a new migration.
 
 ### Endpoints added beyond `API_DESIGN.md`
 
@@ -79,14 +81,17 @@ It exercises the Iteration 1 endpoints, the role boundaries and a concurrent che
 | `GET /admin/categories`, `GET /admin/categories/{id}` | Includes inactive categories |
 | `GET/POST/PUT/DELETE /admin/brands[/{id}]` | Brand management (UC-022 – UC-025) |
 | `GET /admin/products`, `GET /admin/products/{id}` | Includes inactive products |
-| `POST /admin/products/{id}/variants` | Create a variant with its opening stock |
+| `GET/POST /admin/products/{id}/variants`, `GET/PUT/DELETE /admin/variants/{id}` | Variants |
+| `GET /admin/inventory/movements` | Stock movement history |
+| `GET /admin/orders/{id}`, `GET /admin/payments/{id}` | Detail views for staff |
+| `GET /admin/coupons/{id}` | Coupon detail |
 
 `POST /orders` accepts an optional `Idempotency-Key` header: retrying with the same key returns the
 original order (200) instead of creating a duplicate.
 
 ## Decisions for BUSINESS_RULES §13
 
-These decisions cover the whole project; several apply only from Iteration 2 onwards.
+These decisions cover the whole project; some (reviews, reports, user management) apply from Iteration 3.
 
 | # | Decision |
 |---|---|

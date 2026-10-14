@@ -3,10 +3,10 @@
 Sportswear e-commerce mobile app (PRM392). Customers browse, buy and review sports gear; Staff and
 Admin run the shop from an Admin Panel inside the same app.
 
-> **This branch contains Iteration 1 only** (37 features, see `docs/specs/Sport_Mate - Features.csv`):
-> authentication, own profile, adding a delivery address, catalog management (categories, brands,
-> products, creating variants), browsing/search/filter/sort, cart, checkout and placing an order, and
-> wishlist. Iterations 2 and 3 live on `dev`.
+> **This branch contains Iterations 1 and 2** (61 features, see `docs/specs/Sport_Mate - Features.csv`).
+> On top of Iteration 1 it adds address management, variant editing, inventory, order history and
+> cancellation, staff order processing, payments and coupons. User management, product images,
+> reviews and reports come in Iteration 3 (`release/iter-3`).
 
 | Part | Stack |
 |---|---|
@@ -76,14 +76,16 @@ Created by the development seed.
 | Staff | `staff@sportmate.vn` | `Staff@123` |
 | Customer | `customer@sportmate.vn` | `Customer@123` |
 
+Demo coupons: `WELCOME10`, `SALE50K`, `RUN15`, `EXPIRED20`.
+
 ## Roles
 
 | Role | Can do |
 |---|---|
 | Guest | Browse, search, filter and sort products; register and sign in |
-| Customer | Profile, add delivery addresses, cart, checkout (COD / bank transfer), wishlist |
-| Staff | Categories, brands, products and new variants |
-| Admin | Same as Staff in Iteration 1 |
+| Customer | Profile, addresses, cart, checkout (COD / bank transfer, coupons), orders, wishlist |
+| Staff | Catalog, inventory, order processing, payment confirmation |
+| Admin | Everything Staff can do, plus coupons |
 
 Staff and Admin share the `/admin/*` API endpoints, and the app shows or hides features by role.
 The API enforces every permission. Full details are in
