@@ -107,7 +107,10 @@ original order (200) instead of creating a duplicate.
 
 Other policies:
 
-- **Sign out** revokes all of the user's tokens. Changing the password, being disabled or a role change does the same, using a token version checked on every request.
-- **Password reset:** no mail service is in scope, so the reset token is written to the API log in place of an email.
-- **Shipping:** Standard costs 30,000 VND (free from 1,000,000 VND after discount). Express costs 50,000 VND. Configure it under `Shipping` in `appsettings.json`.
-- **Delete fallbacks:** deleting a category, brand, product, variant or coupon that is still referenced deactivates it instead. The response says which happened (`action: Deleted | Deactivated`).
+- **Sign Out and Token Security:** Signing out invalidates all active tokens associated with the user's account. Tokens are also invalidated when the user changes their password, the account is disabled, or the user's role is updated. A token version is verified on each request to ensure security.
+
+- **Password Reset:** Since email integration is not included in the current project scope, password reset tokens are recorded in the API logs instead of being delivered via email.
+
+- **Shipping Fees:** Standard shipping costs 30,000 VND and becomes free when the order total reaches 1,000,000 VND after discounts. Express shipping has a fixed fee of 50,000 VND. These settings can be adjusted in the `Shipping` section of `appsettings.json`.
+
+- **Safe Deletion:** When a category, brand, product, variant, or coupon is still referenced by other records, the system deactivates it rather than permanently deleting it. The API response specifies the action performed through the `action` field, returning either `Deleted` or `Deactivated`.
