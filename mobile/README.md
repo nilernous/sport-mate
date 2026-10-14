@@ -28,9 +28,9 @@ Demo accounts: `customer@sportmate.vn` / `Customer@123`, `staff@sportmate.vn` / 
 lib/
 ├── core/        config, Dio client + endpoints, errors, router (role guards), theme, utils
 ├── models/      typed models for API DTOs
-├── services/    API calls by domain (auth, products, cart/orders/addresses/wishlist, admin)
+├── services/    API calls by domain (auth, products, cart/orders/addresses/wishlist, reviews, admin)
 ├── providers/   Riverpod state: session, cart, wishlist, catalog
-├── screens/     auth, home, products, cart, checkout, orders, profile, wishlist, admin
+├── screens/     auth, home, products, cart, checkout, orders, profile, wishlist, reviews, admin
 └── widgets/     shared UI: loading/empty/error states, paged list, product card, chips
 ```
 
@@ -42,12 +42,12 @@ only for usability: the API re-checks every request.
 | Role     | Bottom tabs                 | Extra screens                                                        |
 | -------- | --------------------------- | -------------------------------------------------------------------- |
 | Guest    | Home, Shop, Cart, Account   | Cart, wishlist and checkout ask the user to sign in                  |
-| Customer | Home, Shop, Cart, Account   | Orders, wishlist, addresses                                          |
-| Staff    | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory          |
-| Admin    | Manage, Home, Shop, Account | Everything Staff has, plus coupons                                   |
+| Customer | Home, Shop, Cart, Account   | Orders, wishlist, addresses, reviews                                 |
+| Staff    | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory, reviews |
+| Admin    | Manage, Home, Shop, Account | Everything Staff has, plus dashboard & reports, coupons, users       |
 
 Route guards in `core/router/app_router.dart` keep each role off pages it cannot use. For example,
-Staff opening `/admin/coupons` are redirected to the panel.
+Staff opening `/admin/users` are redirected to the panel.
 
 ## Notes
 
