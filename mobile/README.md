@@ -28,9 +28,9 @@ Demo accounts: `customer@sportmate.vn` / `Customer@123`, `staff@sportmate.vn` / 
 lib/
 ├── core/        config, Dio client + endpoints, errors, router (role guards), theme, utils
 ├── models/      typed models for API DTOs
-├── services/    API calls by domain (auth, products, cart/orders/addresses/wishlist, reviews, admin)
+├── services/    API calls by domain (auth, products, cart/orders/addresses/wishlist, admin)
 ├── providers/   Riverpod state: session, cart, wishlist, catalog
-├── screens/     auth, home, products, cart, checkout, orders, profile, wishlist, reviews, admin
+├── screens/     auth, home, products, cart, checkout, orders, profile, wishlist, admin
 └── widgets/     shared UI: loading/empty/error states, paged list, product card, chips
 ```
 
@@ -42,16 +42,16 @@ only for usability: the API re-checks every request.
 | Role     | Bottom tabs                 | Extra screens                                                        |
 | -------- | --------------------------- | -------------------------------------------------------------------- |
 | Guest    | Home, Shop, Cart, Account   | Cart, wishlist and checkout ask the user to sign in                  |
-| Customer | Home, Shop, Cart, Account   | Orders, wishlist, addresses, reviews                                 |
-| Staff    | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory, reviews |
-| Admin    | Manage, Home, Shop, Account | Everything Staff has, plus dashboard & reports, coupons, users       |
+| Customer | Home, Shop, Cart, Account   | Checkout & order confirmation, wishlist, addresses                   |
+| Staff    | Manage, Home, Shop, Account | Products & variants, categories & brands                             |
+| Admin    | Manage, Home, Shop, Account | Same as Staff in Iteration 1                                         |
 
 Route guards in `core/router/app_router.dart` keep each role off pages it cannot use. For example,
-Staff opening `/admin/users` are redirected to the panel.
+a Customer opening `/admin/products` is sent back to Home.
 
 ## Notes
 
 - The token is kept in `flutter_secure_storage`. A 401 on any request clears the session.
-- Totals, discounts, shipping and stock always come from the API. The cart shows estimates and checkout uses the server preview.
+- Totals, shipping and stock always come from the API. The cart shows estimates and checkout uses the server preview.
 - Placing an order sends an `Idempotency-Key`, so a retried tap cannot create a second order.
 - Uploaded product images are returned as `/uploads/...` paths and resolved against the API origin.
