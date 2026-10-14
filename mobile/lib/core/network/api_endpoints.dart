@@ -13,6 +13,7 @@ class ApiEndpoints {
   static const me = '/users/me';
   static const myPassword = '/users/me/password';
   static const myAddresses = '/users/me/addresses';
+  static String myAddress(int id) => '/users/me/addresses/$id';
   static const myWishlist = '/users/me/wishlist';
   static const myWishlistItems = '/users/me/wishlist/items';
   static String myWishlistItem(int productId) => '/users/me/wishlist/items/$productId';

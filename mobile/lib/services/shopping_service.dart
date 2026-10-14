@@ -34,6 +34,10 @@ class AddressService {
       (await _api.get<List<dynamic>>(ApiEndpoints.myAddresses)).map((e) => Address.fromJson(e as Json)).toList();
 
   Future<Address> create(Json data) async => Address.fromJson(await _api.post<Json>(ApiEndpoints.myAddresses, data: data));
+
+  Future<Address> update(int id, Json data) async => Address.fromJson(await _api.put<Json>(ApiEndpoints.myAddress(id), data: data));
+
+  Future<void> delete(int id) => _api.delete<void>(ApiEndpoints.myAddress(id));
 }
 
 class OrderService {

@@ -110,6 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       page('/wishlist', (_) => const WishlistScreen()),
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
       page('/addresses/new', (_) => const AddressFormScreen()),
+      page('/addresses/:id/edit', (s) => AddressFormScreen(addressId: idParam(s))),
       page('/account/edit', (_) => const EditProfileScreen()),
       page('/account/password', (_) => const ChangePasswordScreen()),
 
