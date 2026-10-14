@@ -3,6 +3,7 @@
 Run against a freshly seeded Development database: python scripts/smoke_test.py
 Requires: pip install requests
 """
+import io
 import sys
 import uuid
 import threading
@@ -66,7 +67,9 @@ call("POST", "/auth/reset-password", json={"token": "bad", "newPassword": "abc12
 call("GET", "/users/me", expect=401)
 
 # --- Authorization boundaries ---
+call("GET", "/admin/users", staff, expect=403)
 call("GET", "/admin/coupons", staff, expect=403)
+call("GET", "/admin/dashboard/summary", staff, expect=403)
 call("GET", "/admin/orders", cust, expect=403)
 call("GET", "/admin/orders", staff, expect=200)
 call("GET", "/cart", staff, expect=403)
@@ -96,6 +99,17 @@ sku = "TST-" + uuid.uuid4().hex[:6]
 r, v = call("POST", f"/admin/products/{pid}/variants", staff, json={"sku": sku, "size": "42", "color": "Red", "price": 120000, "initialStock": 2}, expect=201)
 call("POST", f"/admin/products/{pid}/variants", staff, json={"sku": sku.lower(), "size": "43", "color": "Red", "price": 1, "initialStock": 0}, expect=409)
 call("PUT", f"/admin/variants/{v['id']}", staff, json={"sku": sku, "size": "42", "color": "Red", "price": 150000, "isActive": True}, expect=200)
+r, img = call("POST", f"/admin/products/{pid}/images", staff, data={"url": "https://picsum.photos/200", "altText": "x"}, expect=201)
+png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+r, img2 = call("POST", f"/admin/products/{pid}/images", staff, files={"file": ("a.png", io.BytesIO(png), "image/png")}, expect=201)
+if img2:
+    rr = requests.get("http://localhost:5005" + img2["url"])
+    check("uploaded image served", rr.status_code == 200, rr.status_code)
+call("POST", f"/admin/products/{pid}/images", staff, files={"file": ("a.txt", io.BytesIO(b"hi"), "text/plain")}, expect=400)
+call("PUT", f"/admin/images/{img2['id']}", staff, json={"altText": "primary", "displayOrder": 0, "isPrimary": True}, expect=200)
+r, imgs = call("GET", f"/admin/products/{pid}/images", staff, expect=200)
+check("one primary", sum(1 for i in imgs if i["isPrimary"]) == 1, imgs)
+call("DELETE", f"/admin/images/{img['id']}", staff, expect=204)
 
 # --- Inventory ---
 call("PATCH", f"/admin/variants/{v['id']}/stock", staff, json={"quantityChange": -5, "reason": "Damaged"}, expect=409)
@@ -198,6 +212,22 @@ demo3 = list_["items"][0]
 r, d3 = call("PATCH", f"/admin/orders/{demo3['id']}/status", staff, json={"status": "Completed"}, expect=200)
 check("COD paid on delivery", d3["payment"]["status"] == "Paid", d3["payment"])
 
+# --- Reviews ---
+r, mine = call("GET", f"/products/{pid}/reviews/me", cust, expect=200)
+check("can review completed purchase", mine["canReview"] is True, mine)
+r, rev = call("POST", f"/products/{pid}/reviews", cust, json={"rating": 4, "comment": "ok"}, expect=201)
+call("POST", f"/products/{pid}/reviews", cust, json={"rating": 4}, expect=409)
+call("POST", f"/products/{pid}/reviews", other, json={"rating": 5}, expect=403)
+call("POST", f"/products/{pid}/reviews", cust, json={"rating": 6}, expect=400)
+call("PUT", f"/reviews/{rev['id']}", cust, json={"rating": 5, "comment": "great"}, expect=200)
+call("PUT", f"/reviews/{rev['id']}", other, json={"rating": 1}, expect=404)
+call("PATCH", f"/admin/reviews/{rev['id']}/status", staff, json={"status": "Hidden"}, expect=200)
+r, pr = call("GET", f"/products/{pid}/reviews", expect=200)
+check("hidden excluded", pr["summary"]["reviewCount"] == 0, pr["summary"])
+call("PATCH", f"/admin/reviews/{rev['id']}/status", staff, json={"status": "Approved"}, expect=200)
+r, pr = call("GET", f"/products/{pid}/reviews", expect=200)
+check("approved shown", pr["summary"]["reviewCount"] == 1 and pr["summary"]["averageRating"] == 5, pr["summary"])
+
 # --- Wishlist ---
 call("POST", "/users/me/wishlist/items", cust, json={"productId": pid}, expect=201)
 call("POST", "/users/me/wishlist/items", cust, json={"productId": pid}, expect=200)
@@ -228,8 +258,29 @@ call("GET", f"/admin/coupons/{cp['id']}", admin, expect=200)
 r, d = call("DELETE", f"/admin/coupons/{cp['id']}", admin, expect=200)
 check("unused coupon deleted", d["action"] == "Deleted", d)
 
+# --- Users admin ---
+r, users = call("GET", "/admin/users?role=Admin", admin, expect=200)
+admin_id = users["items"][0]["id"]
+call("PATCH", f"/admin/users/{admin_id}/status", admin, json={"isActive": False}, expect=409)
+r, nu = call("POST", "/admin/users", admin, json={"fullName": "Staff Two", "email": f"s{uuid.uuid4().hex[:5]}@sm.vn", "password": "abc12345", "role": "Staff"}, expect=201)
+call("PATCH", f"/admin/users/{nu['id']}/role", admin, json={"role": "Customer"}, expect=200)
+call("PUT", f"/admin/users/{nu['id']}", admin, json={"fullName": "Renamed", "email": nu["email"]}, expect=200)
+r, ou = call("GET", "/users/me", other, expect=200)
+call("PATCH", f"/admin/users/{ou['id']}/status", admin, json={"isActive": False}, expect=200)
+call("GET", "/users/me", other, expect=401)
+call("POST", "/auth/login", json={"email": email, "password": "xyz98765"}, expect=403)
+call("GET", f"/admin/users/{ou['id']}", admin, expect=200)
+
+# --- Reports ---
+r, dash = call("GET", "/admin/dashboard/summary", admin, expect=200)
+check("dashboard revenue", dash["revenue"] > 0 and len(dash["dailyRevenue"]) == 30, {k: dash[k] for k in ("revenue", "totalOrders")})
+call("GET", "/admin/dashboard/summary?from=2026-10-10&to=2026-01-01", admin, expect=400)
+call("GET", "/admin/reports/orders?groupBy=status", admin, expect=200)
+r, top = call("GET", "/admin/reports/top-products?limit=5", admin, expect=200)
+check("top products", len(top["products"]) > 0, top)
+
 # --- Error shape ---
-r, err = call("GET", "/admin/coupons", staff, expect=403)
+r, err = call("GET", "/admin/users", staff, expect=403)
 print("403 body:", r.text[:200])
 r, err = call("GET", "/products/999999", expect=404)
 check("problem details", err and err.get("status") == 404 and "title" in err, err)

@@ -12,6 +12,14 @@ public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserDto User)
 
 public record MessageResponse(string Message);
 
+public record AdminUserDto(
+    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
+    DateTime CreatedAt, DateTime UpdatedAt);
+
+public record AdminUserDetailDto(
+    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
+    DateTime CreatedAt, DateTime UpdatedAt, int OrderCount, IReadOnlyList<AddressDto> Addresses);
+
 public record AddressDto(
     int Id, string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District,
     string City, bool IsDefault);
@@ -119,6 +127,35 @@ public record CouponDto(
     DateTime StartsAt, DateTime EndsAt, int? UsageLimit, int? PerUserLimit, int UsedCount, bool IsActive,
     DateTime CreatedAt, DateTime UpdatedAt);
 
-// ---------- Wishlist ----------
+// ---------- Reviews & wishlist ----------
+
+public record ReviewDto(
+    int Id, int ProductId, string ProductName, int UserId, string UserName, int Rating, string? Comment,
+    ReviewStatus Status, DateTime CreatedAt, DateTime UpdatedAt);
+
+public record ReviewSummaryDto(double AverageRating, int ReviewCount, IReadOnlyDictionary<int, int> RatingCounts);
+
+public record ProductReviewsDto(ReviewSummaryDto Summary, PagedResult<ReviewDto> Reviews);
+
+public record MyReviewStatusDto(bool CanReview, string? Reason, ReviewDto? Review);
 
 public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);
+
+// ---------- Reports ----------
+
+public record StatusCountDto(OrderStatus Status, int Count);
+
+public record DashboardSummaryDto(
+    DateOnly From, DateOnly To, int TotalOrders, int PaidOrders, decimal Revenue, decimal AverageOrderValue,
+    int NewCustomers, int CancelledOrders, int LowStockVariants, IReadOnlyList<StatusCountDto> OrdersByStatus,
+    IReadOnlyList<DailyRevenueDto> DailyRevenue, string RevenueDefinition);
+
+public record DailyRevenueDto(DateOnly Date, int Orders, decimal Revenue);
+
+public record OrderReportRowDto(string Group, int OrderCount, decimal TotalAmount, decimal PaidAmount);
+
+public record OrderReportDto(DateOnly From, DateOnly To, string GroupBy, IReadOnlyList<OrderReportRowDto> Rows, int TotalOrders, decimal TotalAmount);
+
+public record TopProductDto(int Rank, int ProductId, string ProductName, string? ImageUrl, int QuantitySold, decimal Revenue);
+
+public record TopProductsReportDto(DateOnly From, DateOnly To, IReadOnlyList<TopProductDto> Products, string Definition);

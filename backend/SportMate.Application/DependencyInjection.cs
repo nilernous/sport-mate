@@ -17,15 +17,18 @@ public static class DependencyInjection
         services.AddSingleton<ReportSettingsAccessor>();
         services.AddScoped<AuthService>();
         services.AddScoped<AddressService>();
+        services.AddScoped<UserAdminService>();
         services.AddScoped<CategoryBrandService>();
         services.AddScoped<ProductService>();
-        services.AddScoped<VariantService>();
+        services.AddScoped<VariantImageService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<CartService>();
         services.AddScoped<CouponService>();
         services.AddScoped<PaymentService>();
         services.AddScoped<OrderService>();
+        services.AddScoped<ReviewService>();
         services.AddScoped<WishlistService>();
+        services.AddScoped<ReportService>();
         return services;
     }
 }
