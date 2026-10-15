@@ -41,4 +41,5 @@ class ApiEndpoints {
   static String adminProduct(int id) => '/admin/products/$id';
   static String adminProductStatus(int id) => '/admin/products/$id/status';
   static String adminProductVariants(int id) => '/admin/products/$id/variants';
+  static String adminVariant(int id) => '/admin/variants/$id';
 }

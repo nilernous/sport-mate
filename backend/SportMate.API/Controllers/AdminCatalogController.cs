@@ -8,7 +8,7 @@ using SportMate.Application.Services;
 
 namespace SportMate.API.Controllers;
 
-/// <summary>Catalog management, shared by Staff and Admin (UC-018 – UC-030).</summary>
+/// <summary>Catalog management, shared by Staff and Admin (UC-018 – UC-033).</summary>
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminCatalogController(
@@ -88,7 +88,23 @@ public class AdminCatalogController(
 
     // ---------- Variants ----------
 
+    [HttpGet("products/{productId:int}/variants")]
+    public async Task<ActionResult<IReadOnlyList<VariantDto>>> ListVariants(int productId, CancellationToken ct) =>
+        Ok(await variants.ListVariantsAsync(productId, ct));
+
     [HttpPost("products/{productId:int}/variants")]
     public async Task<ActionResult<VariantDto>> CreateVariant(int productId, CreateVariantRequest request, CancellationToken ct) =>
         StatusCode(StatusCodes.Status201Created, await variants.CreateVariantAsync(CurrentUserId, productId, request, ct));
+
+    [HttpGet("variants/{id:int}")]
+    public async Task<ActionResult<VariantDto>> GetVariant(int id, CancellationToken ct) =>
+        Ok(await variants.GetVariantAsync(id, ct));
+
+    [HttpPut("variants/{id:int}")]
+    public async Task<ActionResult<VariantDto>> UpdateVariant(int id, UpdateVariantRequest request, CancellationToken ct) =>
+        Ok(await variants.UpdateVariantAsync(id, request, ct));
+
+    [HttpDelete("variants/{id:int}")]
+    public async Task<ActionResult<DeleteResultDto>> DeleteVariant(int id, CancellationToken ct) =>
+        Ok(await variants.DeleteVariantAsync(id, ct));
 }

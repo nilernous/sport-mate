@@ -53,6 +53,10 @@ class AdminService {
 
   Future<Variant> createVariant(int productId, Json data) async =>
       Variant.fromJson(await _api.post<Json>(ApiEndpoints.adminProductVariants(productId), data: data));
+
+  Future<Variant> updateVariant(int id, Json data) async => Variant.fromJson(await _api.put<Json>(ApiEndpoints.adminVariant(id), data: data));
+
+  Future<DeleteResult> deleteVariant(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminVariant(id)));
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

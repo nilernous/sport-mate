@@ -76,7 +76,7 @@ class _AdminProductListScreenState extends ConsumerState<AdminProductListScreen>
       );
 }
 
-/// Create/edit a product and add its variants (UC-026 – UC-030).
+/// Create/edit a product with its variants (UC-026 – UC-033).
 class AdminProductEditScreen extends ConsumerStatefulWidget {
   const AdminProductEditScreen({super.key, this.productId});
 
@@ -259,16 +259,26 @@ class _VariantsSection extends ConsumerWidget {
   final ProductDetail product;
   final Future<void> Function() onChanged;
 
-  Future<void> _add(BuildContext context) async {
-    final saved = await showDialog<bool>(context: context, builder: (_) => _VariantDialog(productId: product.id));
+  Future<void> _edit(BuildContext context, WidgetRef ref, Variant? variant) async {
+    final saved = await showDialog<bool>(context: context, builder: (_) => _VariantDialog(productId: product.id, variant: variant));
     if (saved == true) await onChanged();
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref, Variant v) async {
+    if (!await confirmDialog(context, title: 'Delete variant', message: 'Delete ${v.label} (${v.sku})?', confirmLabel: 'Delete', destructive: true)) return;
+    if (!context.mounted) return;
+    await runGuarded(context, () async {
+      final result = await ref.read(adminServiceProvider).deleteVariant(v.id);
+      if (context.mounted) showMessage(context, result.message);
+      await onChanged();
+    });
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(child: Text('Variants (${product.variants.length})', style: Theme.of(context).textTheme.titleMedium)),
-          TextButton.icon(onPressed: () => _add(context), icon: const Icon(Icons.add), label: const Text('Add variant')),
+          TextButton.icon(onPressed: () => _edit(context, ref, null), icon: const Icon(Icons.add), label: const Text('Add variant')),
         ]),
         if (product.variants.isEmpty) const Text('Add at least one size/color variant so customers can buy this product.'),
         for (final v in product.variants)
@@ -278,15 +288,26 @@ class _VariantsSection extends ConsumerWidget {
               title: Text('${v.label} · ${formatVnd(v.price)}'),
               subtitle: Text('SKU ${v.sku} · stock ${v.stockQuantity}'),
               leading: StatusChip.active(v.isActive),
+              trailing: PopupMenuButton<String>(
+                onSelected: (a) => switch (a) {
+                  'edit' => _edit(context, ref, v),
+                  _ => _delete(context, ref, v),
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+              ),
             ),
           ),
       ]);
 }
 
 class _VariantDialog extends ConsumerStatefulWidget {
-  const _VariantDialog({required this.productId});
+  const _VariantDialog({required this.productId, this.variant});
 
   final int productId;
+  final Variant? variant;
 
   @override
   ConsumerState<_VariantDialog> createState() => _VariantDialogState();
@@ -294,12 +315,12 @@ class _VariantDialog extends ConsumerStatefulWidget {
 
 class _VariantDialogState extends ConsumerState<_VariantDialog> {
   final _form = GlobalKey<FormState>();
-  final _sku = TextEditingController();
-  final _size = TextEditingController();
-  final _color = TextEditingController();
-  final _price = TextEditingController();
+  late final _sku = TextEditingController(text: widget.variant?.sku);
+  late final _size = TextEditingController(text: widget.variant?.size);
+  late final _color = TextEditingController(text: widget.variant?.color);
+  late final _price = TextEditingController(text: widget.variant?.price.toStringAsFixed(0));
   final _stock = TextEditingController(text: '0');
-  bool _active = true;
+  late bool _active = widget.variant?.isActive ?? true;
 
   @override
   void dispose() {
@@ -317,11 +338,12 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
       'color': _color.text.trim(),
       'price': parseMoney(_price.text),
       'isActive': _active,
-      'initialStock': int.tryParse(_stock.text) ?? 0,
+      if (widget.variant == null) 'initialStock': int.tryParse(_stock.text) ?? 0,
     };
+    final service = ref.read(adminServiceProvider);
     final ok = await runGuarded(
       context,
-      () => ref.read(adminServiceProvider).createVariant(widget.productId, data),
+      () => widget.variant == null ? service.createVariant(widget.productId, data) : service.updateVariant(widget.variant!.id, data),
       success: 'Variant saved',
     );
     if (ok && mounted) Navigator.pop(context, true);
@@ -329,7 +351,7 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('New variant'),
+        title: Text(widget.variant == null ? 'New variant' : 'Edit variant'),
         content: Form(
           key: _form,
           child: SingleChildScrollView(
@@ -343,13 +365,19 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
               ]),
               const SizedBox(height: 12),
               TextFormField(controller: _price, decoration: const InputDecoration(labelText: 'Price (VND)'), keyboardType: TextInputType.number, validator: Validators.money),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _stock,
-                decoration: const InputDecoration(labelText: 'Initial stock'),
-                keyboardType: TextInputType.number,
-                validator: (v) => (int.tryParse(v ?? '') ?? -1) < 0 ? 'Enter 0 or more' : null,
-              ),
+              if (widget.variant == null) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _stock,
+                  decoration: const InputDecoration(labelText: 'Initial stock'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => (int.tryParse(v ?? '') ?? -1) < 0 ? 'Enter 0 or more' : null,
+                ),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Text('Change stock from Inventory so every change is recorded.', style: TextStyle(fontSize: 12)),
+                ),
               SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active'), value: _active, onChanged: (v) => setState(() => _active = v)),
             ]),
           ),
