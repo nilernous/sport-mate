@@ -28,3 +28,15 @@ public class BankTransferSettings
     public string AccountNumber { get; set; } = "0000000000";
     public string AccountName { get; set; } = "SPORT MATE";
 }
+
+public class ReportSettings
+{
+    public const string Section = "Reports";
+
+    /// <summary>Report dates are calendar days in this UTC offset (Vietnam = +7) (BR-069).</summary>
+    public int UtcOffsetHours { get; set; } = 7;
+
+    public int MaxRangeDays { get; set; } = 366;
+
+    public int LowStockThreshold { get; set; } = 5;
+}

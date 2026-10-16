@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
 import '../core/network/api_endpoints.dart';
+import '../models/admin.dart';
 import '../models/catalog.dart';
 import '../models/common.dart';
 
@@ -57,6 +58,21 @@ class AdminService {
   Future<Variant> updateVariant(int id, Json data) async => Variant.fromJson(await _api.put<Json>(ApiEndpoints.adminVariant(id), data: data));
 
   Future<DeleteResult> deleteVariant(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminVariant(id)));
+
+  // ---------- Inventory ----------
+
+  Future<Paged<InventoryItem>> inventory({String? keyword, int? maxStock, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminInventory, query: {'keyword': keyword, 'maxStock': maxStock, 'page': page, 'pageSize': 30}),
+        InventoryItem.fromJson,
+      );
+
+  Future<InventoryItem> adjustStock(int variantId, int quantityChange, String reason) async => InventoryItem.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminVariantStock(variantId), data: {'quantityChange': quantityChange, 'reason': reason}));
+
+  Future<Paged<StockMovement>> movements({int? variantId, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminInventoryMovements, query: {'variantId': variantId, 'page': page, 'pageSize': 30}),
+        StockMovement.fromJson,
+      );
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

@@ -51,3 +51,35 @@ public class AddWishlistItemRequest
     [Range(1, int.MaxValue)]
     public int ProductId { get; init; }
 }
+
+public class AdjustStockRequest
+{
+    /// <summary>Positive to add stock, negative to remove. Zero is rejected.</summary>
+    [Range(-1_000_000, 1_000_000)]
+    public int QuantityChange { get; init; }
+
+    [Required, StringLength(500, MinimumLength = 3)]
+    public string Reason { get; init; } = string.Empty;
+}
+
+public class InventoryQuery : PageQuery
+{
+    [StringLength(100)]
+    public string? Keyword { get; init; }
+
+    public int? ProductId { get; init; }
+    public int? VariantId { get; init; }
+
+    /// <summary>Only variants at or below this stock level.</summary>
+    [Range(0, int.MaxValue)]
+    public int? MaxStock { get; init; }
+}
+
+public class StockMovementQuery : PageQuery
+{
+    public int? VariantId { get; init; }
+    public int? ProductId { get; init; }
+    public StockMovementType? Type { get; init; }
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+}

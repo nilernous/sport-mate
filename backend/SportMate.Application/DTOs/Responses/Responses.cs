@@ -50,6 +50,16 @@ public record FilterOptionsDto(
     IReadOnlyList<CategoryDto> Categories, IReadOnlyList<BrandDto> Brands, IReadOnlyList<string> Sizes,
     IReadOnlyList<string> Colors, decimal MinPrice, decimal MaxPrice);
 
+// ---------- Inventory ----------
+
+public record InventoryItemDto(
+    int VariantId, int ProductId, string ProductName, string Sku, string Size, string Color, decimal Price,
+    int StockQuantity, bool IsActive);
+
+public record StockMovementDto(
+    int Id, int VariantId, string Sku, string ProductName, int QuantityChange, int QuantityAfter,
+    StockMovementType Type, string? Reason, int? OrderId, string? ActorName, DateTime CreatedAt);
+
 // ---------- Cart & checkout ----------
 
 public record CartItemDto(

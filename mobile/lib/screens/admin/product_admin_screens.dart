@@ -291,10 +291,12 @@ class _VariantsSection extends ConsumerWidget {
               trailing: PopupMenuButton<String>(
                 onSelected: (a) => switch (a) {
                   'edit' => _edit(context, ref, v),
+                  'stock' => context.push('/admin/inventory/movements?variantId=${v.id}&title=${Uri.encodeComponent(v.sku)}'),
                   _ => _delete(context, ref, v),
                 },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'stock', child: Text('Stock history')),
                   PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
               ),

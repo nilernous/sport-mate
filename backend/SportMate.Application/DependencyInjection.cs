@@ -12,7 +12,9 @@ public static class DependencyInjection
     {
         services.Configure<ShippingSettings>(configuration.GetSection(ShippingSettings.Section));
         services.Configure<BankTransferSettings>(configuration.GetSection(BankTransferSettings.Section));
+        services.Configure<ReportSettings>(configuration.GetSection(ReportSettings.Section));
 
+        services.AddSingleton<ReportSettingsAccessor>();
         services.AddScoped<AuthService>();
         services.AddScoped<AddressService>();
         services.AddScoped<CategoryBrandService>();
