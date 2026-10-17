@@ -31,6 +31,8 @@ class ApiEndpoints {
   static String cartItem(int id) => '/cart/items/$id';
   static const checkoutPreview = '/checkout/preview';
   static const orders = '/orders';
+  static String order(int id) => '/orders/$id';
+  static String cancelOrder(int id) => '/orders/$id/cancel';
 
   // Staff & Admin (shared /admin/* paths)
   static const adminCategories = '/admin/categories';

@@ -178,6 +178,100 @@ public class OrderService(
     private static string NewOrderCode(DateTime now) =>
         $"SM{now:yyMMdd}{RandomNumberGenerator.GetString("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 6)}";
 
+    // ---------- Customer views ----------
+
+    // UC-053
+    public async Task<PagedResult<OrderSummaryDto>> ListOwnAsync(int userId, OrderQuery q, CancellationToken ct)
+    {
+        var query = db.Orders.AsNoTracking().Where(o => o.UserId == userId);
+        if (q.Status is not null) query = query.Where(o => o.Status == q.Status);
+
+        return await query.OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id)
+            .Select(o => new OrderSummaryDto(
+                o.Id, o.OrderCode, o.Status,
+                o.Payment != null ? o.Payment.Method : null, o.Payment != null ? o.Payment.Status : null,
+                o.TotalAmount, o.Items.Sum(i => i.Quantity),
+                o.Items.OrderBy(i => i.Id).Select(i => i.ProductName).FirstOrDefault(),
+                o.Items.OrderBy(i => i.Id).Select(i => i.ImageUrl).FirstOrDefault(),
+                o.CreatedAt))
+            .ToPagedResultAsync(q, ct);
+    }
+
+    // UC-054: another customer's order is reported as not found, not forbidden (BR-038).
+    public async Task<OrderDetailDto> GetOwnAsync(int userId, int orderId, CancellationToken ct)
+    {
+        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.UserId == userId, ct)) throw AppException.NotFound("Order");
+        return await GetDetailAsync(orderId, ct);
+    }
+
+    // UC-055
+    public async Task<OrderDetailDto> CancelOwnAsync(int userId, int orderId, string? reason, CancellationToken ct)
+    {
+        if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.UserId == userId, ct)) throw AppException.NotFound("Order");
+        await CancelAsync(orderId, userId, isCustomer: true, TextNormalizer.Clean(reason) ?? "Cancelled by customer", ct);
+        return await GetDetailAsync(orderId, ct);
+    }
+
+    /// <summary>
+    /// Cancels an order and restores its stock exactly once (BR-028). The status change is saved first
+    /// under the order's row version, so a concurrent second cancellation fails with 409 instead of
+    /// restoring stock twice.
+    /// </summary>
+    private async Task CancelAsync(int orderId, int actorId, bool isCustomer, string note, CancellationToken ct)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var order = await db.Orders.Include(o => o.Items).Include(o => o.Payment)
+                        .SingleOrDefaultAsync(o => o.Id == orderId, ct) ?? throw AppException.NotFound("Order");
+
+        if (isCustomer && !IsCustomerCancellable(order.Status))
+            throw AppException.Conflict("This order can no longer be cancelled because it has already shipped or been closed.");
+        EnsureTransition(order.Status, OrderStatus.Cancelled);
+
+        var now = DateTime.UtcNow;
+        var from = order.Status;
+        order.Status = OrderStatus.Cancelled;
+        order.CancelledAt = now;
+        order.UpdatedAt = now;
+        order.StatusHistory.Add(new OrderStatusHistory { FromStatus = from, ToStatus = OrderStatus.Cancelled, ChangedByUserId = actorId, ChangedAt = now, Note = note });
+
+        if (order.Payment is { } payment)
+        {
+            if (payment.Status == PaymentStatus.Pending)
+            {
+                payment.Status = PaymentStatus.Failed;
+                payment.Note = "Order cancelled before payment";
+                payment.UpdatedAt = now;
+            }
+            else if (payment.Status == PaymentStatus.Paid)
+            {
+                // Cancelling a paid order does not refund it automatically (BR-053).
+                payment.Note = "Order cancelled after payment: refund pending";
+                payment.UpdatedAt = now;
+            }
+        }
+        await db.SaveChangesAsync(ct);
+
+        foreach (var item in order.Items)
+        {
+            var after = await inventory.ChangeStockAsync(item.VariantId, item.Quantity, ct)
+                        ?? throw AppException.Conflict("Stock could not be restored.");
+            db.StockMovements.Add(new StockMovement
+            {
+                VariantId = item.VariantId, QuantityChange = item.Quantity, QuantityAfter = after,
+                Type = StockMovementType.OrderCancelled, OrderId = order.Id, ActorUserId = actorId, CreatedAt = now,
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    private static void EnsureTransition(OrderStatus from, OrderStatus to)
+    {
+        if (!Transitions[from].Contains(to))
+            throw AppException.Conflict($"An order cannot move from {from} to {to}.");
+    }
+
     // ---------- Detail ----------
 
     public async Task<OrderDetailDto> GetDetailAsync(int orderId, CancellationToken ct)

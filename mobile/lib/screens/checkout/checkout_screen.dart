@@ -90,7 +90,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             idempotencyKey: _idempotencyKey,
           );
       ref.invalidate(cartProvider);
-      if (mounted) context.pushReplacement('/orders/confirmation', extra: order);
+      if (mounted) context.pushReplacement('/orders/${order.id}?placed=1');
     } catch (e) {
       if (!mounted) return;
       showError(context, e);

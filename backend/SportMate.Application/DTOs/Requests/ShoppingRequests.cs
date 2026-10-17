@@ -46,6 +46,17 @@ public class PlaceOrderRequest
     public string? Note { get; init; }
 }
 
+public class CancelOrderRequest
+{
+    [StringLength(500)]
+    public string? Reason { get; init; }
+}
+
+public class OrderQuery : PageQuery
+{
+    public OrderStatus? Status { get; init; }
+}
+
 public class AddWishlistItemRequest
 {
     [Range(1, int.MaxValue)]

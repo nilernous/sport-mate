@@ -63,6 +63,21 @@ public class OrdersController(OrderService orders) : ApiControllerBase
         PlaceOrderRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
     {
         var (order, created) = await orders.PlaceOrderAsync(CurrentUserId, request, idempotencyKey, ct);
-        return created ? StatusCode(StatusCodes.Status201Created, order) : Ok(order);
+        return created ? CreatedAtAction(nameof(Get), new { id = order.Id }, order) : Ok(order);
     }
+
+    /// <summary>UC-053 Own order history.</summary>
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<OrderSummaryDto>>> List([FromQuery] OrderQuery query, CancellationToken ct) =>
+        Ok(await orders.ListOwnAsync(CurrentUserId, query, ct));
+
+    /// <summary>UC-054 Own order details.</summary>
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<OrderDetailDto>> Get(int id, CancellationToken ct) =>
+        Ok(await orders.GetOwnAsync(CurrentUserId, id, ct));
+
+    /// <summary>UC-055 Cancel an own order while it is Pending or Confirmed.</summary>
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<OrderDetailDto>> Cancel(int id, CancelOrderRequest? request, CancellationToken ct) =>
+        Ok(await orders.CancelOwnAsync(CurrentUserId, id, request?.Reason, ct));
 }

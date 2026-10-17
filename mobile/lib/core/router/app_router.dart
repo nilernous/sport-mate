@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/admin/admin_home_screen.dart';
 import '../../screens/admin/catalog_setup_screen.dart';
@@ -107,7 +106,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Customer
       page('/checkout', (_) => const CheckoutScreen()),
-      page('/orders/confirmation', (s) => OrderConfirmationScreen(order: s.extra as OrderDetail?)),
+      page('/orders', (_) => const OrderListScreen()),
+      page('/orders/:id', (s) => OrderDetailScreen(orderId: idParam(s), justPlaced: s.uri.queryParameters['placed'] == '1')),
       page('/wishlist', (_) => const WishlistScreen()),
       page('/addresses', (s) => AddressListScreen(selectMode: s.uri.queryParameters['select'] == '1')),
       page('/addresses/new', (_) => const AddressFormScreen()),

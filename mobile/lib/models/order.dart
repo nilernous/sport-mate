@@ -19,6 +19,51 @@ OrderStatus parseOrderStatus(Object? v) => enumByName(OrderStatus.values, v, Ord
 
 PaymentStatus parsePaymentStatus(Object? v) => enumByName(PaymentStatus.values, v, PaymentStatus.pending);
 
+class OrderSummary {
+  const OrderSummary({
+    required this.id,
+    required this.orderCode,
+    required this.status,
+    this.paymentMethod,
+    this.paymentStatus,
+    required this.totalAmount,
+    required this.itemCount,
+    this.firstItemName,
+    this.firstItemImageUrl,
+    this.customerName,
+    this.customerEmail,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String orderCode;
+  final OrderStatus status;
+  final PaymentMethod? paymentMethod;
+  final PaymentStatus? paymentStatus;
+  final double totalAmount;
+  final int itemCount;
+  final String? firstItemName;
+  final String? firstItemImageUrl;
+  final String? customerName;
+  final String? customerEmail;
+  final DateTime createdAt;
+
+  factory OrderSummary.fromJson(Json json) => OrderSummary(
+        id: toInt(json['id']),
+        orderCode: '${json['orderCode']}',
+        status: parseOrderStatus(json['status']),
+        paymentMethod: json['paymentMethod'] == null ? null : parsePaymentMethod(json['paymentMethod']),
+        paymentStatus: json['paymentStatus'] == null ? null : parsePaymentStatus(json['paymentStatus']),
+        totalAmount: toDouble(json['totalAmount']),
+        itemCount: toInt(json['itemCount']),
+        firstItemName: json['firstItemName'] as String?,
+        firstItemImageUrl: json['firstItemImageUrl'] as String?,
+        customerName: json['customerName'] as String?,
+        customerEmail: json['customerEmail'] as String?,
+        createdAt: toDate(json['createdAt']),
+      );
+}
+
 class OrderItem {
   const OrderItem({
     required this.id,

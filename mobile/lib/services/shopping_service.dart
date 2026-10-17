@@ -69,6 +69,16 @@ class OrderService {
           'note': note,
         },
       ));
+
+  Future<Paged<OrderSummary>> list({OrderStatus? status, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.orders, query: {'status': status?.apiName, 'page': page, 'pageSize': 20}),
+        OrderSummary.fromJson,
+      );
+
+  Future<OrderDetail> get(int id) async => OrderDetail.fromJson(await _api.get<Json>(ApiEndpoints.order(id)));
+
+  Future<OrderDetail> cancel(int id, {String? reason}) async =>
+      OrderDetail.fromJson(await _api.post<Json>(ApiEndpoints.cancelOrder(id), data: {'reason': reason}));
 }
 
 class WishlistService {
