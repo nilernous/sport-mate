@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../screens/admin/admin_home_screen.dart';
 import '../../screens/admin/catalog_setup_screen.dart';
 import '../../screens/admin/inventory_screens.dart';
+import '../../screens/admin/order_admin_screens.dart';
 import '../../screens/admin/product_admin_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
@@ -125,6 +126,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             variantId: int.tryParse(s.uri.queryParameters['variantId'] ?? ''),
             title: s.uri.queryParameters['title'],
           )),
+      page('/admin/orders', (_) => const AdminOrderListScreen()),
+      page('/admin/orders/:id', (s) => AdminOrderDetailScreen(orderId: idParam(s))),
     ],
   );
 });

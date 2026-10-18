@@ -52,9 +52,31 @@ public class CancelOrderRequest
     public string? Reason { get; init; }
 }
 
+public class UpdateOrderStatusRequest
+{
+    [Required, EnumDataType(typeof(OrderStatus))]
+    public OrderStatus? Status { get; init; }
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
 public class OrderQuery : PageQuery
 {
     public OrderStatus? Status { get; init; }
+}
+
+public class AdminOrderQuery : PageQuery
+{
+    /// <summary>Matches order code, customer name or customer email.</summary>
+    [StringLength(100)]
+    public string? Keyword { get; init; }
+
+    public OrderStatus? Status { get; init; }
+    public PaymentStatus? PaymentStatus { get; init; }
+    public int? CustomerId { get; init; }
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
 }
 
 public class AddWishlistItemRequest

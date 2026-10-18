@@ -86,6 +86,11 @@ public record OrderSummaryDto(
     int Id, string OrderCode, OrderStatus Status, PaymentMethod? PaymentMethod, PaymentStatus? PaymentStatus,
     decimal TotalAmount, int ItemCount, string? FirstItemName, string? FirstItemImageUrl, DateTime CreatedAt);
 
+public record AdminOrderSummaryDto(
+    int Id, string OrderCode, int CustomerId, string CustomerName, string CustomerEmail, OrderStatus Status,
+    PaymentMethod? PaymentMethod, PaymentStatus? PaymentStatus, decimal TotalAmount, int ItemCount,
+    DateTime CreatedAt);
+
 public record OrderStatusHistoryDto(OrderStatus? FromStatus, OrderStatus ToStatus, string? ChangedBy, string? Note, DateTime ChangedAt);
 
 public record DeliveryAddressDto(string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District, string City);

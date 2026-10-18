@@ -17,7 +17,8 @@ public class OrderService(
     CartService carts,
     InventoryService inventory,
     PaymentService payments,
-    IOptions<ShippingSettings> shippingOptions)
+    IOptions<ShippingSettings> shippingOptions,
+    ReportSettingsAccessor reportSettings)
 {
     private readonly ShippingSettings _shipping = shippingOptions.Value;
 
@@ -209,6 +210,63 @@ public class OrderService(
     {
         if (!await db.Orders.AnyAsync(o => o.Id == orderId && o.UserId == userId, ct)) throw AppException.NotFound("Order");
         await CancelAsync(orderId, userId, isCustomer: true, TextNormalizer.Clean(reason) ?? "Cancelled by customer", ct);
+        return await GetDetailAsync(orderId, ct);
+    }
+
+    // ---------- Staff / Admin ----------
+
+    // UC-056
+    public async Task<PagedResult<AdminOrderSummaryDto>> ListAllAsync(AdminOrderQuery q, CancellationToken ct)
+    {
+        var (fromUtc, toUtc) = reportSettings.ToUtcRange(q.From, q.To, requireRange: false);
+        var query = db.Orders.AsNoTracking();
+        if (q.Status is not null) query = query.Where(o => o.Status == q.Status);
+        if (q.PaymentStatus is not null) query = query.Where(o => o.Payment != null && o.Payment.Status == q.PaymentStatus);
+        if (q.CustomerId is not null) query = query.Where(o => o.UserId == q.CustomerId);
+        if (fromUtc is not null) query = query.Where(o => o.CreatedAt >= fromUtc);
+        if (toUtc is not null) query = query.Where(o => o.CreatedAt < toUtc);
+        if (!string.IsNullOrWhiteSpace(q.Keyword))
+        {
+            var k = q.Keyword.Trim();
+            query = query.Where(o => o.OrderCode.Contains(k) || o.User.FullName.Contains(k) || o.User.Email.Contains(k) || o.PhoneNumber.Contains(k));
+        }
+
+        return await query.OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id)
+            .Select(o => new AdminOrderSummaryDto(
+                o.Id, o.OrderCode, o.UserId, o.User.FullName, o.User.Email, o.Status,
+                o.Payment != null ? o.Payment.Method : null, o.Payment != null ? o.Payment.Status : null,
+                o.TotalAmount, o.Items.Sum(i => i.Quantity), o.CreatedAt))
+            .ToPagedResultAsync(q, ct);
+    }
+
+    public Task<OrderDetailDto> GetForStaffAsync(int orderId, CancellationToken ct) => GetDetailAsync(orderId, ct);
+
+    // UC-057
+    public async Task<OrderDetailDto> UpdateStatusAsync(int actorId, int orderId, OrderStatus target, string? note, CancellationToken ct)
+    {
+        if (target == OrderStatus.Cancelled)
+        {
+            await CancelAsync(orderId, actorId, isCustomer: false, TextNormalizer.Clean(note) ?? "Cancelled by staff", ct);
+            return await GetDetailAsync(orderId, ct);
+        }
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var order = await db.Orders.Include(o => o.Payment).SingleOrDefaultAsync(o => o.Id == orderId, ct)
+                    ?? throw AppException.NotFound("Order");
+        EnsureTransition(order.Status, target);
+
+        // Payment rules cannot be bypassed by a status change (BR-043).
+        if (target == OrderStatus.Shipping && order.Payment is { Method: PaymentMethod.BankTransfer, Status: not PaymentStatus.Paid })
+            throw AppException.Conflict("A bank-transfer order can be shipped only after its payment is confirmed.");
+
+        var now = DateTime.UtcNow;
+        var from = order.Status;
+        order.Status = target;
+        order.UpdatedAt = now;
+        order.StatusHistory.Add(new OrderStatusHistory { FromStatus = from, ToStatus = target, ChangedByUserId = actorId, ChangedAt = now, Note = TextNormalizer.Clean(note) });
+
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return await GetDetailAsync(orderId, ct);
     }
 

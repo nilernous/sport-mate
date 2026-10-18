@@ -5,6 +5,7 @@ import '../core/network/api_endpoints.dart';
 import '../models/admin.dart';
 import '../models/catalog.dart';
 import '../models/common.dart';
+import '../models/order.dart';
 
 /// Staff & Admin catalog operations on the shared /admin/* endpoints.
 class AdminService {
@@ -73,6 +74,25 @@ class AdminService {
         await _api.get<Json>(ApiEndpoints.adminInventoryMovements, query: {'variantId': variantId, 'page': page, 'pageSize': 30}),
         StockMovement.fromJson,
       );
+
+  // ---------- Orders & payments ----------
+
+  Future<Paged<OrderSummary>> orders({String? keyword, OrderStatus? status, PaymentStatus? paymentStatus, int page = 1}) async =>
+      Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminOrders, query: {
+          'keyword': keyword,
+          'status': status?.apiName,
+          'paymentStatus': paymentStatus?.apiName,
+          'page': page,
+          'pageSize': 20,
+        }),
+        OrderSummary.fromJson,
+      );
+
+  Future<OrderDetail> order(int id) async => OrderDetail.fromJson(await _api.get<Json>(ApiEndpoints.adminOrder(id)));
+
+  Future<OrderDetail> updateOrderStatus(int id, OrderStatus status, {String? note}) async =>
+      OrderDetail.fromJson(await _api.patch<Json>(ApiEndpoints.adminOrderStatus(id), data: {'status': status.apiName, 'note': note}));
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

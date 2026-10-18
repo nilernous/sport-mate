@@ -12,7 +12,8 @@ namespace SportMate.API.Controllers;
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminOperationsController(
-    InventoryService inventory) : ApiControllerBase
+    InventoryService inventory,
+    OrderService orders) : ApiControllerBase
 {
     // ---------- Inventory ----------
 
@@ -30,4 +31,20 @@ public class AdminOperationsController(
     [HttpGet("inventory/movements")]
     public async Task<ActionResult<PagedResult<StockMovementDto>>> ListMovements([FromQuery] StockMovementQuery query, CancellationToken ct) =>
         Ok(await inventory.ListMovementsAsync(query, ct));
+
+    // ---------- Orders ----------
+
+    /// <summary>UC-056 Search and list all orders.</summary>
+    [HttpGet("orders")]
+    public async Task<ActionResult<PagedResult<AdminOrderSummaryDto>>> ListOrders([FromQuery] AdminOrderQuery query, CancellationToken ct) =>
+        Ok(await orders.ListAllAsync(query, ct));
+
+    [HttpGet("orders/{id:int}")]
+    public async Task<ActionResult<OrderDetailDto>> GetOrder(int id, CancellationToken ct) =>
+        Ok(await orders.GetForStaffAsync(id, ct));
+
+    /// <summary>UC-057 Move an order to its next status.</summary>
+    [HttpPatch("orders/{id:int}/status")]
+    public async Task<ActionResult<OrderDetailDto>> UpdateOrderStatus(int id, UpdateOrderStatusRequest request, CancellationToken ct) =>
+        Ok(await orders.UpdateStatusAsync(CurrentUserId, id, request.Status!.Value, request.Note, ct));
 }
