@@ -126,6 +126,12 @@ class OrderDetailScreen extends ConsumerWidget {
     if (ok) ref.invalidate(orderDetailProvider(orderId));
   }
 
+  Future<void> _changePayment(BuildContext context, WidgetRef ref, PaymentMethod method) async {
+    final ok = await runGuarded(context, () => ref.read(orderServiceProvider).choosePaymentMethod(orderId, method),
+        success: 'Payment method updated');
+    if (ok) ref.invalidate(orderDetailProvider(orderId));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(orderDetailProvider(orderId));
@@ -146,6 +152,10 @@ class OrderDetailScreen extends ConsumerWidget {
             if (o.payment != null)
               PaymentCard(
                 payment: o.payment!,
+                orderCode: o.orderCode,
+                onChangeMethod: o.status == OrderStatus.pending && o.payment!.status == PaymentStatus.pending
+                    ? (m) => _changePayment(context, ref, m)
+                    : null,
               ),
             const SizedBox(height: 12),
             OrderItemsCard(order: o),
@@ -270,9 +280,12 @@ class OrderItemsCard extends StatelessWidget {
 }
 
 class PaymentCard extends StatelessWidget {
-  const PaymentCard({super.key, required this.payment});
+  const PaymentCard({super.key, required this.payment, required this.orderCode, this.onChangeMethod, this.actions});
 
   final Payment payment;
+  final String orderCode;
+  final void Function(PaymentMethod)? onChangeMethod;
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -304,6 +317,17 @@ class PaymentCard extends StatelessWidget {
             _CopyRow('Amount', bank.amount.toStringAsFixed(0), display: formatVnd(bank.amount)),
             _CopyRow('Transfer content', bank.transferContent),
           ],
+          if (onChangeMethod != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => onChangeMethod!(payment.method == PaymentMethod.cod ? PaymentMethod.bankTransfer : PaymentMethod.cod),
+                child: Text(payment.method == PaymentMethod.cod ? 'Pay by bank transfer instead' : 'Pay on delivery instead'),
+              ),
+            ),
+          ],
+          if (actions != null) ...[const SizedBox(height: 8), actions!],
         ]),
       ),
     );

@@ -265,6 +265,10 @@ public class OrderService(
         order.UpdatedAt = now;
         order.StatusHistory.Add(new OrderStatusHistory { FromStatus = from, ToStatus = target, ChangedByUserId = actorId, ChangedAt = now, Note = TextNormalizer.Clean(note) });
 
+        // COD: delivering the order is the agreed confirmation that cash was collected (BR-049).
+        if (target == OrderStatus.Completed && order.Payment is { Method: PaymentMethod.COD, Status: PaymentStatus.Pending } cod)
+            payments.MarkPaid(cod, actorId, now, "Cash collected on delivery");
+
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return await GetDetailAsync(orderId, ct);

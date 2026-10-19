@@ -93,6 +93,12 @@ class AdminService {
 
   Future<OrderDetail> updateOrderStatus(int id, OrderStatus status, {String? note}) async =>
       OrderDetail.fromJson(await _api.patch<Json>(ApiEndpoints.adminOrderStatus(id), data: {'status': status.apiName, 'note': note}));
+
+  Future<Payment> confirmTransfer(int paymentId, double amount, String reference, {String? note}) async => Payment.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminPaymentConfirm(paymentId), data: {'amount': amount, 'transferReference': reference, 'note': note}));
+
+  Future<Payment> updatePaymentStatus(int paymentId, PaymentStatus status, {String? note}) async => Payment.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminPaymentStatus(paymentId), data: {'status': status.apiName, 'note': note}));
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

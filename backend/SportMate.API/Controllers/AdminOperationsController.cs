@@ -13,7 +13,8 @@ namespace SportMate.API.Controllers;
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminOperationsController(
     InventoryService inventory,
-    OrderService orders) : ApiControllerBase
+    OrderService orders,
+    PaymentService payments) : ApiControllerBase
 {
     // ---------- Inventory ----------
 
@@ -47,4 +48,20 @@ public class AdminOperationsController(
     [HttpPatch("orders/{id:int}/status")]
     public async Task<ActionResult<OrderDetailDto>> UpdateOrderStatus(int id, UpdateOrderStatusRequest request, CancellationToken ct) =>
         Ok(await orders.UpdateStatusAsync(CurrentUserId, id, request.Status!.Value, request.Note, ct));
+
+    // ---------- Payments ----------
+
+    [HttpGet("payments/{paymentId:int}")]
+    public async Task<ActionResult<PaymentDto>> GetPayment(int paymentId, CancellationToken ct) =>
+        Ok(await payments.GetForStaffAsync(paymentId, ct));
+
+    /// <summary>UC-060 Confirm a manually verified bank transfer.</summary>
+    [HttpPatch("payments/{paymentId:int}/confirm")]
+    public async Task<ActionResult<PaymentDto>> ConfirmPayment(int paymentId, ConfirmPaymentRequest request, CancellationToken ct) =>
+        Ok(await payments.ConfirmBankTransferAsync(CurrentUserId, paymentId, request, ct));
+
+    /// <summary>Other permitted payment changes: COD collected, failed, refunded.</summary>
+    [HttpPatch("payments/{paymentId:int}/status")]
+    public async Task<ActionResult<PaymentDto>> UpdatePaymentStatus(int paymentId, UpdatePaymentStatusRequest request, CancellationToken ct) =>
+        Ok(await payments.UpdateStatusAsync(CurrentUserId, paymentId, request.Status!.Value, request.Note, ct));
 }

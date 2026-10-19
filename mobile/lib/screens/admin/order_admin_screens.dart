@@ -96,6 +96,18 @@ class AdminOrderDetailScreen extends ConsumerWidget {
     if (ok) _refresh(ref);
   }
 
+  Future<void> _confirmTransfer(BuildContext context, WidgetRef ref, OrderDetail order) async {
+    final saved = await showDialog<bool>(context: context, builder: (_) => _ConfirmTransferDialog(order: order));
+    if (saved == true) _refresh(ref);
+  }
+
+  Future<void> _setPayment(BuildContext context, WidgetRef ref, Payment payment, PaymentStatus status) async {
+    if (!await confirmDialog(context, title: 'Mark payment as ${status.label}?', message: 'This change is recorded with your name.', confirmLabel: status.label)) return;
+    if (!context.mounted) return;
+    final ok = await runGuarded(context, () => ref.read(adminServiceProvider).updatePaymentStatus(payment.id, status), success: 'Payment updated');
+    if (ok) _refresh(ref);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(_adminOrderProvider(orderId));
@@ -137,6 +149,26 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(height: 12),
+              if (payment != null)
+                PaymentCard(
+                  payment: payment,
+                  orderCode: o.orderCode,
+                  actions: Wrap(spacing: 8, runSpacing: 8, children: [
+                    if (payment.method == PaymentMethod.bankTransfer && payment.status == PaymentStatus.pending && o.status != OrderStatus.cancelled)
+                      FilledButton.icon(
+                        onPressed: () => _confirmTransfer(context, ref, o),
+                        icon: const Icon(Icons.verified_outlined),
+                        label: const Text('Confirm transfer'),
+                      ),
+                    if (payment.method == PaymentMethod.cod && payment.status == PaymentStatus.pending && o.status != OrderStatus.cancelled)
+                      OutlinedButton(onPressed: () => _setPayment(context, ref, payment, PaymentStatus.paid), child: const Text('Cash collected')),
+                    if (payment.status == PaymentStatus.pending)
+                      OutlinedButton(onPressed: () => _setPayment(context, ref, payment, PaymentStatus.failed), child: const Text('Mark failed')),
+                    if (payment.status == PaymentStatus.paid)
+                      OutlinedButton(onPressed: () => _setPayment(context, ref, payment, PaymentStatus.refunded), child: const Text('Mark refunded')),
+                  ]),
+                ),
+              const SizedBox(height: 12),
               OrderItemsCard(order: o),
               const SizedBox(height: 12),
               StatusTimeline(history: o.statusHistory),
@@ -146,4 +178,75 @@ class AdminOrderDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ConfirmTransferDialog extends ConsumerStatefulWidget {
+  const _ConfirmTransferDialog({required this.order});
+
+  final OrderDetail order;
+
+  @override
+  ConsumerState<_ConfirmTransferDialog> createState() => _ConfirmTransferDialogState();
+}
+
+class _ConfirmTransferDialogState extends ConsumerState<_ConfirmTransferDialog> {
+  final _form = GlobalKey<FormState>();
+  final _amount = TextEditingController();
+  late final _reference = TextEditingController(text: widget.order.orderCode);
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _reference.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    final ok = await runGuarded(
+      context,
+      () => ref.read(adminServiceProvider).confirmTransfer(
+            widget.order.payment!.id,
+            parseMoney(_amount.text)!.toDouble(),
+            _reference.text.trim(),
+            note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+          ),
+      success: 'Payment confirmed',
+    );
+    if (ok && mounted) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Confirm bank transfer'),
+        content: Form(
+          key: _form,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Check your bank statement first. Amount due: ${formatVnd(widget.order.payment!.amount)}'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _amount,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Amount received (VND)'),
+                validator: (v) => Validators.money(v, allowZero: false),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _reference,
+                decoration: const InputDecoration(labelText: 'Transfer reference'),
+                validator: (v) => (v ?? '').trim().length < 3 ? 'Enter the reference from the bank statement' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(controller: _note, decoration: const InputDecoration(labelText: 'Note (optional)')),
+            ]),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          BusyButton(label: 'Confirm', onPressed: _save),
+        ],
+      );
 }

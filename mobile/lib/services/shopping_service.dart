@@ -79,6 +79,11 @@ class OrderService {
 
   Future<OrderDetail> cancel(int id, {String? reason}) async =>
       OrderDetail.fromJson(await _api.post<Json>(ApiEndpoints.cancelOrder(id), data: {'reason': reason}));
+
+  Future<Payment> payment(int orderId) async => Payment.fromJson(await _api.get<Json>(ApiEndpoints.orderPayment(orderId)));
+
+  Future<Payment> choosePaymentMethod(int orderId, PaymentMethod method) async =>
+      Payment.fromJson(await _api.post<Json>(ApiEndpoints.orderPayment(orderId), data: {'method': method.apiName}));
 }
 
 class WishlistService {

@@ -52,7 +52,7 @@ public class CheckoutController(OrderService orders) : ApiControllerBase
 
 [Route("api/v1/orders")]
 [Authorize(Roles = Roles.Customer)]
-public class OrdersController(OrderService orders) : ApiControllerBase
+public class OrdersController(OrderService orders, PaymentService payments) : ApiControllerBase
 {
     /// <summary>
     /// UC-052 Place an order from the cart. Send an <c>Idempotency-Key</c> header to make retries safe:
@@ -80,4 +80,14 @@ public class OrdersController(OrderService orders) : ApiControllerBase
     [HttpPost("{id:int}/cancel")]
     public async Task<ActionResult<OrderDetailDto>> Cancel(int id, CancelOrderRequest? request, CancellationToken ct) =>
         Ok(await orders.CancelOwnAsync(CurrentUserId, id, request?.Reason, ct));
+
+    /// <summary>UC-058 Payment status of an own order.</summary>
+    [HttpGet("{orderId:int}/payment")]
+    public async Task<ActionResult<PaymentDto>> GetPayment(int orderId, CancellationToken ct) =>
+        Ok(await payments.GetOwnAsync(CurrentUserId, orderId, ct));
+
+    /// <summary>UC-059 Choose COD or bank transfer and get payment instructions.</summary>
+    [HttpPost("{orderId:int}/payment")]
+    public async Task<ActionResult<PaymentDto>> InitiatePayment(int orderId, InitiatePaymentRequest request, CancellationToken ct) =>
+        Ok(await payments.InitiateAsync(CurrentUserId, orderId, request.Method!.Value, ct));
 }

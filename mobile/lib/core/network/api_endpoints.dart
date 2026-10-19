@@ -25,7 +25,7 @@ class ApiEndpoints {
   static const productFilters = '/products/filters';
   static String product(int id) => '/products/$id';
 
-  // Cart, checkout, orders
+  // Cart, checkout, orders, payments
   static const cart = '/cart';
   static const cartItems = '/cart/items';
   static String cartItem(int id) => '/cart/items/$id';
@@ -33,6 +33,7 @@ class ApiEndpoints {
   static const orders = '/orders';
   static String order(int id) => '/orders/$id';
   static String cancelOrder(int id) => '/orders/$id/cancel';
+  static String orderPayment(int id) => '/orders/$id/payment';
 
   // Staff & Admin (shared /admin/* paths)
   static const adminCategories = '/admin/categories';
@@ -50,4 +51,6 @@ class ApiEndpoints {
   static const adminOrders = '/admin/orders';
   static String adminOrder(int id) => '/admin/orders/$id';
   static String adminOrderStatus(int id) => '/admin/orders/$id/status';
+  static String adminPaymentConfirm(int id) => '/admin/payments/$id/confirm';
+  static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
 }

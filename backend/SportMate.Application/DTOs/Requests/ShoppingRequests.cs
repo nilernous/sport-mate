@@ -79,6 +79,34 @@ public class AdminOrderQuery : PageQuery
     public DateOnly? To { get; init; }
 }
 
+public class InitiatePaymentRequest
+{
+    [Required, EnumDataType(typeof(PaymentMethod))]
+    public PaymentMethod? Method { get; init; }
+}
+
+public class ConfirmPaymentRequest
+{
+    /// <summary>Amount actually received, checked against the amount due (BR-052).</summary>
+    [Range(typeof(decimal), "0", "1000000000000")]
+    public decimal Amount { get; init; }
+
+    [Required, StringLength(100, MinimumLength = 3)]
+    public string TransferReference { get; init; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
+public class UpdatePaymentStatusRequest
+{
+    [Required, EnumDataType(typeof(PaymentStatus))]
+    public PaymentStatus? Status { get; init; }
+
+    [StringLength(500)]
+    public string? Note { get; init; }
+}
+
 public class AddWishlistItemRequest
 {
     [Range(1, int.MaxValue)]
