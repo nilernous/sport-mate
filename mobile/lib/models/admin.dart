@@ -74,3 +74,61 @@ class StockMovement {
         createdAt: toDate(json['createdAt']),
       );
 }
+
+class Coupon {
+  const Coupon({
+    required this.id,
+    required this.code,
+    this.description,
+    required this.discountType,
+    required this.discountValue,
+    this.maxDiscountAmount,
+    required this.minOrderAmount,
+    this.applicableCategoryId,
+    this.applicableCategoryName,
+    required this.startsAt,
+    required this.endsAt,
+    this.usageLimit,
+    this.perUserLimit,
+    required this.usedCount,
+    required this.isActive,
+  });
+
+  final int id;
+  final String code;
+  final String? description;
+  final String discountType;
+  final double discountValue;
+  final double? maxDiscountAmount;
+  final double minOrderAmount;
+  final int? applicableCategoryId;
+  final String? applicableCategoryName;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final int? usageLimit;
+  final int? perUserLimit;
+  final int usedCount;
+  final bool isActive;
+
+  bool get isPercentage => discountType == 'Percentage';
+
+  bool get isExpired => DateTime.now().isAfter(endsAt);
+
+  factory Coupon.fromJson(Json json) => Coupon(
+        id: toInt(json['id']),
+        code: '${json['code']}',
+        description: json['description'] as String?,
+        discountType: '${json['discountType']}',
+        discountValue: toDouble(json['discountValue']),
+        maxDiscountAmount: json['maxDiscountAmount'] == null ? null : toDouble(json['maxDiscountAmount']),
+        minOrderAmount: toDouble(json['minOrderAmount']),
+        applicableCategoryId: json['applicableCategoryId'] == null ? null : toInt(json['applicableCategoryId']),
+        applicableCategoryName: json['applicableCategoryName'] as String?,
+        startsAt: toDate(json['startsAt']),
+        endsAt: toDate(json['endsAt']),
+        usageLimit: json['usageLimit'] == null ? null : toInt(json['usageLimit']),
+        perUserLimit: json['perUserLimit'] == null ? null : toInt(json['perUserLimit']),
+        usedCount: toInt(json['usedCount']),
+        isActive: json['isActive'] == true,
+      );
+}

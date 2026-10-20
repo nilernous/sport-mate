@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../screens/admin/admin_home_screen.dart';
 import '../../screens/admin/catalog_setup_screen.dart';
+import '../../screens/admin/coupon_screens.dart';
 import '../../screens/admin/inventory_screens.dart';
 import '../../screens/admin/order_admin_screens.dart';
 import '../../screens/admin/product_admin_screens.dart';
@@ -28,6 +29,9 @@ const _customerOnly = ['/cart', '/checkout', '/orders', '/wishlist', '/addresses
 
 /// Routes for any signed-in user.
 const _signedInOnly = ['/account/edit', '/account/password'];
+
+/// Admin Panel items hidden from Staff (BR-005, BR-067).
+const _adminOnly = ['/admin/coupons'];
 
 bool _under(String location, String prefix) => location == prefix || location.startsWith('$prefix/');
 
@@ -56,6 +60,7 @@ String? _redirect(AuthState auth, GoRouterState state) {
 
   if (needsCustomer && !auth.isCustomer) return home;
   if (_under(location, '/admin') && !auth.isStaffOrAdmin) return '/home';
+  if (_adminOnly.any((p) => _under(location, p)) && !auth.isAdmin) return '/admin';
   return null;
 }
 
@@ -128,6 +133,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           )),
       page('/admin/orders', (_) => const AdminOrderListScreen()),
       page('/admin/orders/:id', (s) => AdminOrderDetailScreen(orderId: idParam(s))),
+
+      // Admin only
+      page('/admin/coupons', (_) => const CouponListScreen()),
+      page('/admin/coupons/new', (_) => const CouponFormScreen()),
+      page('/admin/coupons/:id', (s) => CouponFormScreen(couponId: idParam(s))),
     ],
   );
 });

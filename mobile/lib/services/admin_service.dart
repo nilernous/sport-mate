@@ -7,7 +7,8 @@ import '../models/catalog.dart';
 import '../models/common.dart';
 import '../models/order.dart';
 
-/// Staff & Admin catalog operations on the shared /admin/* endpoints.
+/// Staff & Admin operations on the shared /admin/* endpoints. Admin-only calls
+/// (coupons) are rejected with 403 for Staff by the API.
 class AdminService {
   AdminService(this._api);
 
@@ -99,6 +100,21 @@ class AdminService {
 
   Future<Payment> updatePaymentStatus(int paymentId, PaymentStatus status, {String? note}) async => Payment.fromJson(
       await _api.patch<Json>(ApiEndpoints.adminPaymentStatus(paymentId), data: {'status': status.apiName, 'note': note}));
+
+  // ---------- Coupons (Admin) ----------
+
+  Future<Paged<Coupon>> coupons({String? keyword, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminCoupons, query: {'keyword': keyword, 'page': page, 'pageSize': 50}),
+        Coupon.fromJson,
+      );
+
+  Future<Coupon> coupon(int id) async => Coupon.fromJson(await _api.get<Json>(ApiEndpoints.adminCoupon(id)));
+
+  Future<Coupon> saveCoupon(int? id, Json data) async => Coupon.fromJson(id == null
+      ? await _api.post<Json>(ApiEndpoints.adminCoupons, data: data)
+      : await _api.put<Json>(ApiEndpoints.adminCoupon(id), data: data));
+
+  Future<DeleteResult> deleteCoupon(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminCoupon(id)));
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

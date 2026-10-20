@@ -53,4 +53,8 @@ class ApiEndpoints {
   static String adminOrderStatus(int id) => '/admin/orders/$id/status';
   static String adminPaymentConfirm(int id) => '/admin/payments/$id/confirm';
   static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
+
+  // Admin only
+  static const adminCoupons = '/admin/coupons';
+  static String adminCoupon(int id) => '/admin/coupons/$id';
 }

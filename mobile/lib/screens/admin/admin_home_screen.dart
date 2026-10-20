@@ -5,15 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 
 class _AdminItem {
-  const _AdminItem(this.icon, this.title, this.subtitle, this.route);
+  const _AdminItem(this.icon, this.title, this.subtitle, this.route, {this.adminOnly = false});
 
   final IconData icon;
   final String title;
   final String subtitle;
   final String route;
+  final bool adminOnly;
 }
 
-/// Admin Panel entry, shared by Staff and Admin. The API rejects anything a role may not do.
+/// Admin Panel entry. Staff see operational tools only; Admin also sees coupons. The API rejects anything a role may not do.
 class AdminHomeScreen extends ConsumerWidget {
   const AdminHomeScreen({super.key});
 
@@ -22,11 +23,13 @@ class AdminHomeScreen extends ConsumerWidget {
     _AdminItem(Icons.inventory_2_outlined, 'Products', 'Products & variants', '/admin/products'),
     _AdminItem(Icons.category_outlined, 'Categories & brands', 'Organise the catalog', '/admin/catalog-setup'),
     _AdminItem(Icons.warehouse_outlined, 'Inventory', 'Stock levels & adjustments', '/admin/inventory'),
+    _AdminItem(Icons.local_offer_outlined, 'Coupons', 'Discount codes', '/admin/coupons', adminOnly: true),
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
+    final items = _items.where((i) => !i.adminOnly || auth.isAdmin).toList();
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -46,7 +49,7 @@ class AdminHomeScreen extends ConsumerWidget {
             crossAxisSpacing: 12,
             childAspectRatio: 1.25,
             children: [
-              for (final item in _items)
+              for (final item in items)
                 Card(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),

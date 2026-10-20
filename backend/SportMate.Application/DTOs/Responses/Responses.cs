@@ -109,6 +109,14 @@ public record PaymentDto(
     string? TransferReference, string? ConfirmedBy, DateTime? ConfirmedAt, string? Note,
     BankTransferInstructionsDto? BankTransferInstructions, DateTime CreatedAt, DateTime UpdatedAt);
 
+// ---------- Coupons ----------
+
+public record CouponDto(
+    int Id, string Code, string? Description, DiscountType DiscountType, decimal DiscountValue,
+    decimal? MaxDiscountAmount, decimal MinOrderAmount, int? ApplicableCategoryId, string? ApplicableCategoryName,
+    DateTime StartsAt, DateTime EndsAt, int? UsageLimit, int? PerUserLimit, int UsedCount, bool IsActive,
+    DateTime CreatedAt, DateTime UpdatedAt);
+
 // ---------- Wishlist ----------
 
 public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);
