@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/errors/app_exception.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/shopping.dart';
 import '../../models/user.dart';
@@ -12,7 +13,7 @@ import '../../services/shopping_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/state_views.dart';
 
-/// Checkout (UC-051, UC-052). All totals come from the server preview.
+/// Checkout (UC-051, UC-052, UC-065 – UC-067). All totals come from the server preview.
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -24,6 +25,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   int? _addressId;
   ShippingMethod _shipping = ShippingMethod.standard;
   PaymentMethod _payment = PaymentMethod.cod;
+  String? _couponCode;
+  final _couponInput = TextEditingController();
   final _note = TextEditingController();
 
   CheckoutPreview? _preview;
@@ -41,6 +44,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   @override
   void dispose() {
+    _couponInput.dispose();
     _note.dispose();
     super.dispose();
   }
@@ -58,7 +62,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _refreshPreview() async {
     setState(() => _loading = true);
     try {
-      final preview = await ref.read(orderServiceProvider).preview(addressId: _addressId, shippingMethod: _shipping);
+      final preview = await ref.read(orderServiceProvider).preview(addressId: _addressId, shippingMethod: _shipping, couponCode: _couponCode);
       setState(() {
         _preview = preview;
         _error = null;
@@ -78,6 +82,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
+  Future<void> _applyCoupon() async {
+    final code = _couponInput.text.trim();
+    if (code.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    try {
+      // UC-065: check the code first; only a valid coupon is applied to the preview (UC-066).
+      final check = await ref.read(orderServiceProvider).validateCoupon(code);
+      if (!check.isValid) {
+        if (mounted) showError(context, AppException(check.message));
+        return;
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+      return;
+    }
+    _couponCode = code;
+    await _refreshPreview();
+  }
+
+  Future<void> _removeCoupon() async {
+    _couponCode = null;
+    _couponInput.clear();
+    await _refreshPreview();
+  }
+
   Future<void> _placeOrder() async {
     final preview = _preview;
     if (preview == null || _addressId == null) return;
@@ -86,6 +115,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             addressId: _addressId!,
             shippingMethod: _shipping,
             paymentMethod: _payment,
+            couponCode: _couponCode,
             note: _note.text.trim().isEmpty ? null : _note.text.trim(),
             idempotencyKey: _idempotencyKey,
           );
@@ -94,7 +124,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     } catch (e) {
       if (!mounted) return;
       showError(context, e);
-      // Stock or prices may have changed: show the latest server totals.
+      // Stock, prices or the coupon may have changed: show the latest server totals.
       await _refreshPreview();
     }
   }
@@ -175,6 +205,32 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                   ]),
                 ),
+                const SizedBox(height: 8),
+                Text('Coupon', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (preview.coupon?.isValid == true)
+                  Card(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    child: ListTile(
+                      leading: const Icon(Icons.local_offer_outlined, color: Colors.green),
+                      title: Text(preview.coupon!.code),
+                      subtitle: Text(preview.coupon!.message),
+                      trailing: IconButton(tooltip: 'Remove coupon', icon: const Icon(Icons.close), onPressed: _removeCoupon),
+                    ),
+                  )
+                else
+                  Row(children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _couponInput,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(hintText: 'Enter coupon code', prefixIcon: Icon(Icons.local_offer_outlined)),
+                        onSubmitted: (_) => _applyCoupon(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(onPressed: _applyCoupon, child: const Text('Apply')),
+                  ]),
                 const SizedBox(height: 16),
                 TextField(controller: _note, maxLength: 500, decoration: const InputDecoration(labelText: 'Note for the shop (optional)')),
                 const SizedBox(height: 8),
@@ -183,6 +239,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Column(children: [
                       InfoRow('Subtotal', formatVnd(preview.subtotal)),
+                      if (preview.discountAmount > 0) InfoRow('Discount', '-${formatVnd(preview.discountAmount)}', valueColor: Colors.green.shade700),
                       InfoRow('Shipping', preview.shippingFee == 0 ? 'Free' : formatVnd(preview.shippingFee)),
                       const Divider(),
                       InfoRow('Total', formatVnd(preview.total), bold: true),

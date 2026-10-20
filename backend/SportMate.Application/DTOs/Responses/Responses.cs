@@ -69,12 +69,14 @@ public record CartItemDto(
 /// <summary>Cart prices are indicative only (BR-031).</summary>
 public record CartDto(IReadOnlyList<CartItemDto> Items, int TotalQuantity, decimal EstimatedSubtotal);
 
+public record CouponCheckDto(bool IsValid, string Code, decimal DiscountAmount, string Message);
+
 public record ShippingOptionDto(ShippingMethod Method, decimal Fee, string Description);
 
 public record CheckoutPreviewDto(
     IReadOnlyList<CartItemDto> Items, AddressDto? Address, ShippingMethod ShippingMethod,
-    IReadOnlyList<ShippingOptionDto> ShippingOptions, decimal Subtotal, decimal ShippingFee, decimal Total,
-    bool CanPlaceOrder, IReadOnlyList<string> Problems);
+    IReadOnlyList<ShippingOptionDto> ShippingOptions, CouponCheckDto? Coupon, decimal Subtotal,
+    decimal DiscountAmount, decimal ShippingFee, decimal Total, bool CanPlaceOrder, IReadOnlyList<string> Problems);
 
 // ---------- Orders & payments ----------
 

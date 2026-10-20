@@ -30,6 +30,7 @@ class ApiEndpoints {
   static const cartItems = '/cart/items';
   static String cartItem(int id) => '/cart/items/$id';
   static const checkoutPreview = '/checkout/preview';
+  static const validateCoupon = '/coupons/validate';
   static const orders = '/orders';
   static String order(int id) => '/orders/$id';
   static String cancelOrder(int id) => '/orders/$id/cancel';

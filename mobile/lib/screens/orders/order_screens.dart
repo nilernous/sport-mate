@@ -250,6 +250,8 @@ class OrderOverview extends StatelessWidget {
           if ((order.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text('Note: ${order.note}', style: theme.textTheme.bodySmall)],
           const Divider(height: 24),
           InfoRow('Subtotal', formatVnd(order.subtotal)),
+          if (order.discountAmount > 0)
+            InfoRow('Discount${order.couponCode == null ? '' : ' (${order.couponCode})'}', '-${formatVnd(order.discountAmount)}', valueColor: Colors.green.shade700),
           InfoRow('Shipping (${order.shippingMethod.apiName})', order.shippingFee == 0 ? 'Free' : formatVnd(order.shippingFee)),
           InfoRow('Total', formatVnd(order.totalAmount), bold: true),
         ]),

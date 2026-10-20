@@ -12,6 +12,14 @@ namespace SportMate.Application.Services;
 /// <summary>Coupon administration (UC-061 – UC-064) and coupon evaluation (UC-065 – UC-067).</summary>
 public class CouponService(IApplicationDbContext db)
 {
+    /// <summary>A cart line as seen by coupon evaluation.</summary>
+    public record PricedLine(int ProductId, int CategoryId, decimal LineTotal);
+
+    public record Evaluation(Coupon? Coupon, bool IsValid, decimal DiscountAmount, string Message)
+    {
+        public CouponCheckDto ToDto(string code) => new(IsValid, Coupon?.Code ?? TextNormalizer.Key(code), DiscountAmount, Message);
+    }
+
     // ---------- Admin ----------
 
     // UC-062
@@ -112,4 +120,50 @@ public class CouponService(IApplicationDbContext db)
         c.IsActive = r.IsActive;
         c.UpdatedAt = now;
     }
+
+    // ---------- Evaluation ----------
+
+    /// <summary>
+    /// Checks every coupon rule against the given lines (BR-055 – BR-057). Pure read:
+    /// it never consumes usage (BR-059).
+    /// </summary>
+    public async Task<Evaluation> EvaluateAsync(string rawCode, int userId, IReadOnlyCollection<PricedLine> lines, CancellationToken ct)
+    {
+        var code = TextNormalizer.Key(rawCode);
+        var coupon = await db.Coupons.AsNoTracking().SingleOrDefaultAsync(c => c.Code == code, ct);
+        if (coupon is null) return Invalid(null, "Coupon code does not exist.");
+        if (!coupon.IsActive) return Invalid(coupon, "This coupon is no longer available.");
+
+        var now = DateTime.UtcNow;
+        if (now < coupon.StartsAt) return Invalid(coupon, "This coupon is not active yet.");
+        if (now >= coupon.EndsAt) return Invalid(coupon, "This coupon has expired.");
+        if (coupon.UsageLimit is not null && coupon.UsedCount >= coupon.UsageLimit)
+            return Invalid(coupon, "This coupon has reached its usage limit.");
+        if (coupon.PerUserLimit is not null)
+        {
+            var usedByUser = await db.CouponUsages.CountAsync(u => u.CouponId == coupon.Id && u.UserId == userId, ct);
+            if (usedByUser >= coupon.PerUserLimit) return Invalid(coupon, "You have already used this coupon the maximum number of times.");
+        }
+
+        if (lines.Count == 0) return Invalid(coupon, "Your cart is empty.");
+        var subtotal = lines.Sum(l => l.LineTotal);
+        if (subtotal < coupon.MinOrderAmount)
+            return Invalid(coupon, $"Minimum order value for this coupon is {coupon.MinOrderAmount:N0} VND.");
+
+        var eligible = coupon.ApplicableCategoryId is null
+            ? subtotal
+            : lines.Where(l => l.CategoryId == coupon.ApplicableCategoryId).Sum(l => l.LineTotal);
+        if (eligible <= 0) return Invalid(coupon, "No items in your cart are eligible for this coupon.");
+
+        var discount = coupon.DiscountType == DiscountType.Percentage
+            ? Math.Round(eligible * coupon.DiscountValue / 100m, 0, MidpointRounding.AwayFromZero)
+            : coupon.DiscountValue;
+        if (coupon.MaxDiscountAmount is not null) discount = Math.Min(discount, coupon.MaxDiscountAmount.Value);
+        // A discount can never exceed what it applies to, so totals never go negative (BR-057).
+        discount = Math.Min(discount, eligible);
+
+        return new Evaluation(coupon, true, discount, $"Coupon applied: -{discount:N0} VND.");
+    }
+
+    private static Evaluation Invalid(Coupon? coupon, string message) => new(coupon, false, 0, message);
 }

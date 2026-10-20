@@ -11,10 +11,11 @@ using SportMate.Domain.Enums;
 
 namespace SportMate.Application.Services;
 
-/// <summary>Checkout and order placement (UC-051, UC-052).</summary>
+/// <summary>Checkout and order lifecycle (UC-051 – UC-057, UC-066, UC-067).</summary>
 public class OrderService(
     IApplicationDbContext db,
     CartService carts,
+    CouponService coupons,
     InventoryService inventory,
     PaymentService payments,
     IOptions<ShippingSettings> shippingOptions,
@@ -37,11 +38,14 @@ public class OrderService(
 
     // ---------- Checkout ----------
 
-    private sealed record PricedCart(List<CartItemDto> Items, decimal Subtotal, List<string> Problems);
+    private sealed record PricedCart(List<CartItemDto> Items, List<CouponService.PricedLine> Lines, decimal Subtotal, List<string> Problems);
 
     private async Task<PricedCart> PriceCartAsync(int userId, CancellationToken ct)
     {
         var items = await carts.GetItemsAsync(userId, ct);
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var categoryByProduct = await db.Products.Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.CategoryId, ct);
 
         var problems = new List<string>();
         if (items.Count == 0) problems.Add("Your cart is empty.");
@@ -53,10 +57,11 @@ public class OrderService(
         }
 
         var available = items.Where(i => i.IsAvailable).ToList();
-        return new PricedCart(items, available.Sum(i => i.LineTotal), problems);
+        var lines = available.Select(i => new CouponService.PricedLine(i.ProductId, categoryByProduct[i.ProductId], i.LineTotal)).ToList();
+        return new PricedCart(items, lines, available.Sum(i => i.LineTotal), problems);
     }
 
-    // UC-051: nothing is persisted.
+    // UC-051, UC-066, UC-067: nothing is persisted; the coupon is only previewed.
     public async Task<CheckoutPreviewDto> PreviewAsync(int userId, CheckoutPreviewRequest r, CancellationToken ct)
     {
         var priced = await PriceCartAsync(userId, ct);
@@ -74,24 +79,41 @@ public class OrderService(
             problems.Add("Select a delivery address.");
         }
 
-        var shippingFee = priced.Items.Count == 0 ? 0 : _shipping.FeeFor(r.ShippingMethod, priced.Subtotal);
+        CouponCheckDto? couponCheck = null;
+        decimal discount = 0;
+        if (!string.IsNullOrWhiteSpace(r.CouponCode))
+        {
+            var evaluation = await coupons.EvaluateAsync(r.CouponCode, userId, priced.Lines, ct);
+            couponCheck = evaluation.ToDto(r.CouponCode);
+            discount = evaluation.DiscountAmount;
+        }
+
+        var shippingFee = priced.Items.Count == 0 ? 0 : _shipping.FeeFor(r.ShippingMethod, priced.Subtotal - discount);
         return new CheckoutPreviewDto(
-            priced.Items, address, r.ShippingMethod, ShippingOptions(priced.Subtotal),
-            priced.Subtotal, shippingFee, priced.Subtotal + shippingFee, problems.Count == 0, problems);
+            priced.Items, address, r.ShippingMethod, ShippingOptions(priced.Subtotal - discount), couponCheck,
+            priced.Subtotal, discount, shippingFee, priced.Subtotal - discount + shippingFee,
+            problems.Count == 0 && couponCheck?.IsValid != false, problems);
     }
 
-    public IReadOnlyList<ShippingOptionDto> ShippingOptions(decimal subtotal) =>
+    // UC-065
+    public async Task<CouponCheckDto> ValidateCouponAsync(int userId, string code, CancellationToken ct)
+    {
+        var priced = await PriceCartAsync(userId, ct);
+        return (await coupons.EvaluateAsync(code, userId, priced.Lines, ct)).ToDto(code);
+    }
+
+    public IReadOnlyList<ShippingOptionDto> ShippingOptions(decimal discountedSubtotal) =>
     [
-        new(ShippingMethod.Standard, _shipping.FeeFor(ShippingMethod.Standard, subtotal),
+        new(ShippingMethod.Standard, _shipping.FeeFor(ShippingMethod.Standard, discountedSubtotal),
             _shipping.FreeStandardShippingThreshold > 0
                 ? $"3-5 days. Free for orders from {_shipping.FreeStandardShippingThreshold:N0} VND."
                 : "3-5 days."),
-        new(ShippingMethod.Express, _shipping.FeeFor(ShippingMethod.Express, subtotal), "1-2 days."),
+        new(ShippingMethod.Express, _shipping.FeeFor(ShippingMethod.Express, discountedSubtotal), "1-2 days."),
     ];
 
     // ---------- Place order ----------
 
-    // UC-052: validate everything, then create the order and reduce stock in one transaction (BR-035).
+    // UC-052: validate everything, then create order, reduce stock and record coupon usage in one transaction (BR-035, BR-074).
     public async Task<(OrderDetailDto Order, bool Created)> PlaceOrderAsync(int userId, PlaceOrderRequest r, string? idempotencyKey, CancellationToken ct)
     {
         idempotencyKey = TextNormalizer.Clean(idempotencyKey);
@@ -110,8 +132,17 @@ public class OrderService(
         var priced = await PriceCartAsync(userId, ct);
         if (priced.Problems.Count > 0) throw AppException.Conflict(string.Join(" ", priced.Problems));
 
-        var shippingFee = _shipping.FeeFor(r.ShippingMethod!.Value, priced.Subtotal);
-        var total = priced.Subtotal + shippingFee;
+        // The coupon is re-checked here even if the preview accepted it (BR-058).
+        CouponService.Evaluation? evaluation = null;
+        if (!string.IsNullOrWhiteSpace(r.CouponCode))
+        {
+            evaluation = await coupons.EvaluateAsync(r.CouponCode, userId, priced.Lines, ct);
+            if (!evaluation.IsValid) throw AppException.Conflict(evaluation.Message);
+        }
+
+        var discount = evaluation?.DiscountAmount ?? 0;
+        var shippingFee = _shipping.FeeFor(r.ShippingMethod!.Value, priced.Subtotal - discount);
+        var total = priced.Subtotal - discount + shippingFee;
         var now = DateTime.UtcNow;
 
         var order = new Order
@@ -121,8 +152,11 @@ public class OrderService(
             Status = OrderStatus.Pending,
             ShippingMethod = r.ShippingMethod.Value,
             Subtotal = priced.Subtotal,
+            DiscountAmount = discount,
             ShippingFee = shippingFee,
             TotalAmount = total,
+            CouponId = evaluation?.Coupon?.Id,
+            CouponCode = evaluation?.Coupon?.Code,
             RecipientName = address.RecipientName,
             PhoneNumber = address.PhoneNumber,
             AddressLine = address.AddressLine,
@@ -161,11 +195,26 @@ public class OrderService(
             });
         }
 
+        if (evaluation?.Coupon is { } coupon)
+        {
+            var claimed = await db.Coupons
+                .Where(c => c.Id == coupon.Id && c.IsActive && (c.UsageLimit == null || c.UsedCount < c.UsageLimit))
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedCount, c => c.UsedCount + 1), ct);
+            if (claimed == 0) throw AppException.Conflict("This coupon has just reached its usage limit.");
+        }
+
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
 
         movements.ForEach(m => m.OrderId = order.Id);
         db.StockMovements.AddRange(movements);
+        if (evaluation?.Coupon is { } usedCoupon)
+        {
+            db.CouponUsages.Add(new CouponUsage
+            {
+                CouponId = usedCoupon.Id, UserId = userId, OrderId = order.Id, DiscountAmount = discount, UsedAt = now,
+            });
+        }
         await db.SaveChangesAsync(ct);
 
         // Purchased lines leave the cart (BR-037).
@@ -322,6 +371,17 @@ public class OrderService(
                 VariantId = item.VariantId, QuantityChange = item.Quantity, QuantityAfter = after,
                 Type = StockMovementType.OrderCancelled, OrderId = order.Id, ActorUserId = actorId, CreatedAt = now,
             });
+        }
+
+        // A cancelled order gives its coupon use back.
+        if (order.CouponId is not null)
+        {
+            var released = await db.CouponUsages.Where(u => u.OrderId == order.Id).ExecuteDeleteAsync(ct);
+            if (released > 0)
+            {
+                await db.Coupons.Where(c => c.Id == order.CouponId && c.UsedCount > 0)
+                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedCount, c => c.UsedCount - 1), ct);
+            }
         }
 
         await db.SaveChangesAsync(ct);

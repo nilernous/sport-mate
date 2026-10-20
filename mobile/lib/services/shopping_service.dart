@@ -45,17 +45,22 @@ class OrderService {
 
   final ApiClient _api;
 
-  Future<CheckoutPreview> preview({int? addressId, required ShippingMethod shippingMethod}) async =>
+  Future<CheckoutPreview> preview({int? addressId, required ShippingMethod shippingMethod, String? couponCode}) async =>
       CheckoutPreview.fromJson(await _api.post<Json>(ApiEndpoints.checkoutPreview, data: {
         'addressId': addressId,
         'shippingMethod': shippingMethod.apiName,
+        'couponCode': couponCode,
       }));
+
+  Future<CouponCheck> validateCoupon(String code) async =>
+      CouponCheck.fromJson(await _api.post<Json>(ApiEndpoints.validateCoupon, data: {'code': code.trim()}));
 
   /// [idempotencyKey] makes a retried submission return the same order instead of a duplicate.
   Future<OrderDetail> place({
     required int addressId,
     required ShippingMethod shippingMethod,
     required PaymentMethod paymentMethod,
+    String? couponCode,
     String? note,
     required String idempotencyKey,
   }) async =>
@@ -66,6 +71,7 @@ class OrderService {
           'addressId': addressId,
           'shippingMethod': shippingMethod.apiName,
           'paymentMethod': paymentMethod.apiName,
+          'couponCode': couponCode,
           'note': note,
         },
       ));

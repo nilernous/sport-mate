@@ -44,10 +44,15 @@ public class CartController(CartService cart) : ApiControllerBase
 [Authorize(Roles = Roles.Customer)]
 public class CheckoutController(OrderService orders) : ApiControllerBase
 {
-    /// <summary>UC-051 Preview totals. Nothing is saved.</summary>
+    /// <summary>UC-051 / UC-066 / UC-067 Preview totals, optionally with a coupon. Nothing is saved.</summary>
     [HttpPost("checkout/preview")]
     public async Task<ActionResult<CheckoutPreviewDto>> Preview(CheckoutPreviewRequest request, CancellationToken ct) =>
         Ok(await orders.PreviewAsync(CurrentUserId, request, ct));
+
+    /// <summary>UC-065 Validate a coupon against the current cart. Does not consume usage.</summary>
+    [HttpPost("coupons/validate")]
+    public async Task<ActionResult<CouponCheckDto>> ValidateCoupon(ValidateCouponRequest request, CancellationToken ct) =>
+        Ok(await orders.ValidateCouponAsync(CurrentUserId, request.Code, ct));
 }
 
 [Route("api/v1/orders")]

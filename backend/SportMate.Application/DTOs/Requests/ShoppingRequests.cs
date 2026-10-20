@@ -26,6 +26,9 @@ public class CheckoutPreviewRequest
 
     [EnumDataType(typeof(ShippingMethod))]
     public ShippingMethod ShippingMethod { get; init; } = ShippingMethod.Standard;
+
+    [StringLength(50)]
+    public string? CouponCode { get; init; }
 }
 
 /// <summary>
@@ -41,6 +44,9 @@ public class PlaceOrderRequest
 
     [Required, EnumDataType(typeof(PaymentMethod))]
     public PaymentMethod? PaymentMethod { get; init; }
+
+    [StringLength(50)]
+    public string? CouponCode { get; init; }
 
     [StringLength(500)]
     public string? Note { get; init; }
@@ -147,6 +153,12 @@ public class CouponQuery : PageQuery
     public string? Keyword { get; init; }
 
     public bool? IsActive { get; init; }
+}
+
+public class ValidateCouponRequest
+{
+    [Required, StringLength(50)]
+    public string Code { get; init; } = string.Empty;
 }
 
 public class AddWishlistItemRequest
