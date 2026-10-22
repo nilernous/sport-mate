@@ -42,16 +42,16 @@ only for usability: the API re-checks every request.
 | Role     | Bottom tabs                 | Extra screens                                                        |
 | -------- | --------------------------- | -------------------------------------------------------------------- |
 | Guest    | Home, Shop, Cart, Account   | Cart, wishlist and checkout ask the user to sign in                  |
-| Customer | Home, Shop, Cart, Account   | Checkout & order confirmation, wishlist, addresses                   |
-| Staff    | Manage, Home, Shop, Account | Products & variants, categories & brands                             |
-| Admin    | Manage, Home, Shop, Account | Same as Staff in Iteration 1                                         |
+| Customer | Home, Shop, Cart, Account   | Orders, wishlist, addresses                                          |
+| Staff    | Manage, Home, Shop, Account | Orders & payments, products, categories & brands, inventory          |
+| Admin    | Manage, Home, Shop, Account | Everything Staff has, plus coupons                                   |
 
 Route guards in `core/router/app_router.dart` keep each role off pages it cannot use. For example,
-a Customer opening `/admin/products` is sent back to Home.
+Staff opening `/admin/coupons` are redirected to the panel.
 
 ## Notes
 
 - The token is kept in `flutter_secure_storage`. A 401 on any request clears the session.
-- Totals, shipping and stock always come from the API. The cart shows estimates and checkout uses the server preview.
+- Totals, discounts, shipping and stock always come from the API. The cart shows estimates and checkout uses the server preview.
 - Placing an order sends an `Idempotency-Key`, so a retried tap cannot create a second order.
 - Uploaded product images are returned as `/uploads/...` paths and resolved against the API origin.
