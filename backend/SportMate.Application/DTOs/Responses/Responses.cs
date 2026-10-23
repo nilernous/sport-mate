@@ -12,6 +12,14 @@ public record AuthResponse(string AccessToken, DateTime ExpiresAt, UserDto User)
 
 public record MessageResponse(string Message);
 
+public record AdminUserDto(
+    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
+    DateTime CreatedAt, DateTime UpdatedAt);
+
+public record AdminUserDetailDto(
+    int Id, string FullName, string Email, string? PhoneNumber, UserRole Role, bool IsActive,
+    DateTime CreatedAt, DateTime UpdatedAt, int OrderCount, IReadOnlyList<AddressDto> Addresses);
+
 public record AddressDto(
     int Id, string RecipientName, string PhoneNumber, string AddressLine, string Ward, string District,
     string City, bool IsDefault);

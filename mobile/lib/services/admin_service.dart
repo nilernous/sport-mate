@@ -6,9 +6,10 @@ import '../models/admin.dart';
 import '../models/catalog.dart';
 import '../models/common.dart';
 import '../models/order.dart';
+import '../models/user.dart';
 
 /// Staff & Admin operations on the shared /admin/* endpoints. Admin-only calls
-/// (coupons) are rejected with 403 for Staff by the API.
+/// (users, coupons, reports) are rejected with 403 for Staff by the API.
 class AdminService {
   AdminService(this._api);
 
@@ -100,6 +101,31 @@ class AdminService {
 
   Future<Payment> updatePaymentStatus(int paymentId, PaymentStatus status, {String? note}) async => Payment.fromJson(
       await _api.patch<Json>(ApiEndpoints.adminPaymentStatus(paymentId), data: {'status': status.apiName, 'note': note}));
+
+  // ---------- Users (Admin) ----------
+
+  Future<Paged<AdminUser>> users({String? keyword, UserRole? role, bool? isActive, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminUsers, query: {
+          'keyword': keyword,
+          'role': role?.apiName,
+          'isActive': isActive,
+          'page': page,
+          'pageSize': 20,
+        }),
+        AdminUser.fromJson,
+      );
+
+  Future<AdminUser> user(int id) async => AdminUser.fromJson(await _api.get<Json>(ApiEndpoints.adminUser(id)));
+
+  Future<AdminUser> createUser(Json data) async => AdminUser.fromJson(await _api.post<Json>(ApiEndpoints.adminUsers, data: data));
+
+  Future<AdminUser> updateUser(int id, Json data) async => AdminUser.fromJson(await _api.put<Json>(ApiEndpoints.adminUser(id), data: data));
+
+  Future<AdminUser> setUserActive(int id, bool isActive) async =>
+      AdminUser.fromJson(await _api.patch<Json>(ApiEndpoints.adminUserStatus(id), data: {'isActive': isActive}));
+
+  Future<AdminUser> setUserRole(int id, UserRole role) async =>
+      AdminUser.fromJson(await _api.patch<Json>(ApiEndpoints.adminUserRole(id), data: {'role': role.apiName}));
 
   // ---------- Coupons (Admin) ----------
 

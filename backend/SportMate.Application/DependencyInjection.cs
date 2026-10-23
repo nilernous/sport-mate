@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<ReportSettingsAccessor>();
         services.AddScoped<AuthService>();
         services.AddScoped<AddressService>();
+        services.AddScoped<UserAdminService>();
         services.AddScoped<CategoryBrandService>();
         services.AddScoped<ProductService>();
         services.AddScoped<VariantService>();

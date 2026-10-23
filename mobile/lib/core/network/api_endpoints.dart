@@ -56,6 +56,10 @@ class ApiEndpoints {
   static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
 
   // Admin only
+  static const adminUsers = '/admin/users';
+  static String adminUser(int id) => '/admin/users/$id';
+  static String adminUserStatus(int id) => '/admin/users/$id/status';
+  static String adminUserRole(int id) => '/admin/users/$id/role';
   static const adminCoupons = '/admin/coupons';
   static String adminCoupon(int id) => '/admin/coupons/$id';
 }
