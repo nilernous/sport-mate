@@ -47,6 +47,8 @@ class ApiEndpoints {
   static String adminProductVariants(int id) => '/admin/products/$id/variants';
   static String adminVariant(int id) => '/admin/variants/$id';
   static String adminVariantStock(int id) => '/admin/variants/$id/stock';
+  static String adminProductImages(int id) => '/admin/products/$id/images';
+  static String adminImage(int id) => '/admin/images/$id';
   static const adminInventory = '/admin/inventory';
   static const adminInventoryMovements = '/admin/inventory/movements';
   static const adminOrders = '/admin/orders';

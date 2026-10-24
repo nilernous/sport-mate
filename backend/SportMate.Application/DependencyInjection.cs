@@ -20,7 +20,7 @@ public static class DependencyInjection
         services.AddScoped<UserAdminService>();
         services.AddScoped<CategoryBrandService>();
         services.AddScoped<ProductService>();
-        services.AddScoped<VariantService>();
+        services.AddScoped<VariantImageService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<CartService>();
         services.AddScoped<CouponService>();

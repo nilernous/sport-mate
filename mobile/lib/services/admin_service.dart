@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
@@ -37,7 +38,7 @@ class AdminService {
 
   Future<DeleteResult> deleteBrand(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminBrand(id)));
 
-  // ---------- Products & variants ----------
+  // ---------- Products, variants, images ----------
 
   Future<Paged<ProductSummary>> products({String? keyword, bool? isActive, int page = 1}) async => Paged.fromJson(
         await _api.get<Json>(ApiEndpoints.adminProducts, query: {'keyword': keyword, 'isActive': isActive, 'page': page, 'pageSize': 20}),
@@ -61,6 +62,27 @@ class AdminService {
   Future<Variant> updateVariant(int id, Json data) async => Variant.fromJson(await _api.put<Json>(ApiEndpoints.adminVariant(id), data: data));
 
   Future<DeleteResult> deleteVariant(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminVariant(id)));
+
+  Future<ProductImage> addImageUrl(int productId, String url, {String? altText, bool isPrimary = false}) async =>
+      ProductImage.fromJson(await _api.postForm<Json>(
+        ApiEndpoints.adminProductImages(productId),
+        FormData.fromMap({'url': url, if (altText != null && altText.isNotEmpty) 'altText': altText, 'isPrimary': isPrimary}),
+      ));
+
+  Future<ProductImage> uploadImage(int productId, List<int> bytes, String fileName, String contentType, {bool isPrimary = false}) async =>
+      ProductImage.fromJson(await _api.postForm<Json>(
+        ApiEndpoints.adminProductImages(productId),
+        FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: fileName, contentType: DioMediaType.parse(contentType)),
+          'isPrimary': isPrimary,
+        }),
+      ));
+
+  Future<ProductImage> updateImage(int id, {String? altText, required int displayOrder, required bool isPrimary}) async =>
+      ProductImage.fromJson(await _api.put<Json>(ApiEndpoints.adminImage(id),
+          data: {'altText': altText, 'displayOrder': displayOrder, 'isPrimary': isPrimary}));
+
+  Future<void> deleteImage(int id) => _api.delete<void>(ApiEndpoints.adminImage(id));
 
   // ---------- Inventory ----------
 

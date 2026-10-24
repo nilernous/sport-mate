@@ -93,6 +93,37 @@ public class UpdateVariantRequest
     public bool IsActive { get; init; } = true;
 }
 
+/// <summary>An uploaded file, independent of the web framework that received it.</summary>
+public record FileUpload(Stream Content, string FileName, string ContentType, long Length);
+
+public class AddImageRequest
+{
+    /// <summary>Image file (jpg, png, webp; max 5 MB). Either File or Url is required.</summary>
+    public FileUpload? File { get; init; }
+
+    [Url, StringLength(500)]
+    public string? Url { get; init; }
+
+    [StringLength(200)]
+    public string? AltText { get; init; }
+
+    [Range(0, 1000)]
+    public int? DisplayOrder { get; init; }
+
+    public bool IsPrimary { get; init; }
+}
+
+public class UpdateImageRequest
+{
+    [StringLength(200)]
+    public string? AltText { get; init; }
+
+    [Range(0, 1000)]
+    public int DisplayOrder { get; init; }
+
+    public bool IsPrimary { get; init; }
+}
+
 public class ProductQuery : PageQuery
 {
     [StringLength(100)]

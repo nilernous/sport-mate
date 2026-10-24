@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
@@ -76,7 +77,7 @@ class _AdminProductListScreenState extends ConsumerState<AdminProductListScreen>
       );
 }
 
-/// Create/edit a product with its variants (UC-026 – UC-033).
+/// Create/edit a product with its variants and images (UC-026, UC-028 – UC-037).
 class AdminProductEditScreen extends ConsumerStatefulWidget {
   const AdminProductEditScreen({super.key, this.productId});
 
@@ -163,7 +164,7 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
       if (!mounted) return;
       if (_product == null) {
         context.pushReplacement('/admin/products/${saved.id}');
-        showMessage(context, 'Product created. Now add variants.');
+        showMessage(context, 'Product created. Now add variants and images.');
       } else {
         setState(() => _apply(saved));
         showMessage(context, 'Product saved');
@@ -247,6 +248,8 @@ class _AdminProductEditScreenState extends ConsumerState<AdminProductEditScreen>
                   if (product != null) ...[
                     const SizedBox(height: 24),
                     _VariantsSection(product: product, onChanged: _reloadProduct),
+                    const SizedBox(height: 24),
+                    _ImagesSection(product: product, onChanged: _reloadProduct),
                   ],
                 ]),
     );
@@ -389,4 +392,113 @@ class _VariantDialogState extends ConsumerState<_VariantDialog> {
           BusyButton(label: 'Save', onPressed: _save),
         ],
       );
+}
+
+class _ImagesSection extends ConsumerWidget {
+  const _ImagesSection({required this.product, required this.onChanged});
+
+  final ProductDetail product;
+  final Future<void> Function() onChanged;
+
+  static String _contentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  Future<void> _upload(BuildContext context, WidgetRef ref) async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (file == null || !context.mounted) return;
+    await runGuarded(context, () async {
+      final bytes = await file.readAsBytes();
+      await ref.read(adminServiceProvider).uploadImage(product.id, bytes, file.name, file.mimeType ?? _contentType(file.name));
+      await onChanged();
+    }, success: 'Image uploaded');
+  }
+
+  Future<void> _addUrl(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add image URL'),
+        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'https://...'), keyboardType: TextInputType.url),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Add')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (url == null || url.isEmpty || !context.mounted) return;
+    await runGuarded(context, () async {
+      await ref.read(adminServiceProvider).addImageUrl(product.id, url);
+      await onChanged();
+    }, success: 'Image added');
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final service = ref.read(adminServiceProvider);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(child: Text('Images (${product.images.length})', style: Theme.of(context).textTheme.titleMedium)),
+        IconButton(tooltip: 'Upload image', onPressed: () => _upload(context, ref), icon: const Icon(Icons.upload_outlined)),
+        IconButton(tooltip: 'Add image URL', onPressed: () => _addUrl(context, ref), icon: const Icon(Icons.link)),
+      ]),
+      if (product.images.isEmpty) const Text('No images yet. JPEG, PNG or WebP, up to 5 MB.'),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final (index, image) in product.images.indexed)
+          SizedBox(
+            width: 120,
+            child: Column(children: [
+              Stack(children: [
+                AppImage(image.url, width: 120, height: 120),
+                if (image.isPrimary)
+                  const Positioned(left: 4, top: 4, child: StatusChip('Primary', color: Colors.blue)),
+              ]),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Move left',
+                  onPressed: index == 0
+                      ? null
+                      : () => runGuarded(context, () async {
+                            await service.updateImage(image.id, altText: image.altText, displayOrder: product.images[index - 1].displayOrder - 1, isPrimary: image.isPrimary);
+                            await onChanged();
+                          }),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Set as primary',
+                  onPressed: image.isPrimary
+                      ? null
+                      : () => runGuarded(context, () async {
+                            await service.updateImage(image.id, altText: image.altText, displayOrder: image.displayOrder, isPrimary: true);
+                            await onChanged();
+                          }),
+                  icon: Icon(image.isPrimary ? Icons.star : Icons.star_border),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Delete image',
+                  onPressed: () async {
+                    if (!await confirmDialog(context, title: 'Delete image', message: 'Remove this image from the product?', confirmLabel: 'Delete', destructive: true)) return;
+                    if (!context.mounted) return;
+                    await runGuarded(context, () async {
+                      await service.deleteImage(image.id);
+                      await onChanged();
+                    });
+                  },
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ]),
+            ]),
+          ),
+      ]),
+    ]);
+  }
 }
