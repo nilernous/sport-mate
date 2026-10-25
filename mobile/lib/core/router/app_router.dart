@@ -9,6 +9,7 @@ import '../../screens/admin/coupon_screens.dart';
 import '../../screens/admin/inventory_screens.dart';
 import '../../screens/admin/order_admin_screens.dart';
 import '../../screens/admin/product_admin_screens.dart';
+import '../../screens/admin/review_moderation_screen.dart';
 import '../../screens/admin/user_screens.dart';
 import '../../screens/auth/auth_screens.dart';
 import '../../screens/auth/splash_screen.dart';
@@ -20,6 +21,7 @@ import '../../screens/products/product_detail_screen.dart';
 import '../../screens/products/product_list_screen.dart';
 import '../../screens/profile/account_screens.dart';
 import '../../screens/profile/address_screens.dart';
+import '../../screens/reviews/product_reviews_screen.dart';
 import '../../screens/wishlist/wishlist_screen.dart';
 import 'app_shell.dart';
 
@@ -110,6 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Catalog
       page('/products/:id', (s) => ProductDetailScreen(productId: idParam(s))),
+      page('/products/:id/reviews', (s) => ProductReviewsScreen(productId: idParam(s))),
 
       // Customer
       page('/checkout', (_) => const CheckoutScreen()),
@@ -134,6 +137,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           )),
       page('/admin/orders', (_) => const AdminOrderListScreen()),
       page('/admin/orders/:id', (s) => AdminOrderDetailScreen(orderId: idParam(s))),
+      page('/admin/reviews', (_) => const ReviewModerationScreen()),
 
       // Admin only
       page('/admin/coupons', (_) => const CouponListScreen()),

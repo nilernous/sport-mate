@@ -127,6 +127,16 @@ public record CouponDto(
     DateTime StartsAt, DateTime EndsAt, int? UsageLimit, int? PerUserLimit, int UsedCount, bool IsActive,
     DateTime CreatedAt, DateTime UpdatedAt);
 
-// ---------- Wishlist ----------
+// ---------- Reviews & wishlist ----------
+
+public record ReviewDto(
+    int Id, int ProductId, string ProductName, int UserId, string UserName, int Rating, string? Comment,
+    ReviewStatus Status, DateTime CreatedAt, DateTime UpdatedAt);
+
+public record ReviewSummaryDto(double AverageRating, int ReviewCount, IReadOnlyDictionary<int, int> RatingCounts);
+
+public record ProductReviewsDto(ReviewSummaryDto Summary, PagedResult<ReviewDto> Reviews);
+
+public record MyReviewStatusDto(bool CanReview, string? Reason, ReviewDto? Review);
 
 public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);

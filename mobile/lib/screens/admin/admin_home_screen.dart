@@ -24,6 +24,7 @@ class AdminHomeScreen extends ConsumerWidget {
     _AdminItem(Icons.inventory_2_outlined, 'Products', 'Products, variants & images', '/admin/products'),
     _AdminItem(Icons.category_outlined, 'Categories & brands', 'Organise the catalog', '/admin/catalog-setup'),
     _AdminItem(Icons.warehouse_outlined, 'Inventory', 'Stock levels & adjustments', '/admin/inventory'),
+    _AdminItem(Icons.rate_review_outlined, 'Reviews', 'Moderate customer reviews', '/admin/reviews'),
     _AdminItem(Icons.local_offer_outlined, 'Coupons', 'Discount codes', '/admin/coupons', adminOnly: true),
     _AdminItem(Icons.people_outline, 'Users', 'Accounts & roles', '/admin/users', adminOnly: true),
   ];

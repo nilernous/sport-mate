@@ -24,6 +24,9 @@ class ApiEndpoints {
   static const products = '/products';
   static const productFilters = '/products/filters';
   static String product(int id) => '/products/$id';
+  static String productReviews(int id) => '/products/$id/reviews';
+  static String myProductReview(int id) => '/products/$id/reviews/me';
+  static String review(int id) => '/reviews/$id';
 
   // Cart, checkout, orders, payments
   static const cart = '/cart';
@@ -56,6 +59,8 @@ class ApiEndpoints {
   static String adminOrderStatus(int id) => '/admin/orders/$id/status';
   static String adminPaymentConfirm(int id) => '/admin/payments/$id/confirm';
   static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
+  static const adminReviews = '/admin/reviews';
+  static String adminReviewStatus(int id) => '/admin/reviews/$id/status';
 
   // Admin only
   static const adminUsers = '/admin/users';

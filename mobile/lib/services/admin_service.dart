@@ -7,6 +7,7 @@ import '../models/admin.dart';
 import '../models/catalog.dart';
 import '../models/common.dart';
 import '../models/order.dart';
+import '../models/review.dart';
 import '../models/user.dart';
 
 /// Staff & Admin operations on the shared /admin/* endpoints. Admin-only calls
@@ -123,6 +124,16 @@ class AdminService {
 
   Future<Payment> updatePaymentStatus(int paymentId, PaymentStatus status, {String? note}) async => Payment.fromJson(
       await _api.patch<Json>(ApiEndpoints.adminPaymentStatus(paymentId), data: {'status': status.apiName, 'note': note}));
+
+  // ---------- Reviews ----------
+
+  Future<Paged<Review>> reviews({ReviewStatus? status, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminReviews, query: {'status': status?.apiName, 'page': page, 'pageSize': 20}),
+        Review.fromJson,
+      );
+
+  Future<Review> moderateReview(int id, ReviewStatus status) async =>
+      Review.fromJson(await _api.patch<Json>(ApiEndpoints.adminReviewStatus(id), data: {'status': status.apiName}));
 
   // ---------- Users (Admin) ----------
 

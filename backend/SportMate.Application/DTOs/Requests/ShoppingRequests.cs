@@ -161,6 +161,27 @@ public class ValidateCouponRequest
     public string Code { get; init; } = string.Empty;
 }
 
+public class ReviewRequest
+{
+    [Range(1, 5)]
+    public int Rating { get; init; }
+
+    [StringLength(1000)]
+    public string? Comment { get; init; }
+}
+
+public class ModerateReviewRequest
+{
+    [Required, EnumDataType(typeof(ReviewStatus))]
+    public ReviewStatus? Status { get; init; }
+}
+
+public class AdminReviewQuery : PageQuery
+{
+    public ReviewStatus? Status { get; init; }
+    public int? ProductId { get; init; }
+}
+
 public class AddWishlistItemRequest
 {
     [Range(1, int.MaxValue)]
