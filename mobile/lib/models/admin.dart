@@ -1,4 +1,5 @@
 import 'common.dart';
+import 'order.dart';
 
 class InventoryItem {
   const InventoryItem({
@@ -130,5 +131,107 @@ class Coupon {
         perUserLimit: json['perUserLimit'] == null ? null : toInt(json['perUserLimit']),
         usedCount: toInt(json['usedCount']),
         isActive: json['isActive'] == true,
+      );
+}
+
+class DailyRevenue {
+  const DailyRevenue(this.date, this.orders, this.revenue);
+
+  final DateTime date;
+  final int orders;
+  final double revenue;
+
+  factory DailyRevenue.fromJson(Json json) => DailyRevenue(toDate(json['date']), toInt(json['orders']), toDouble(json['revenue']));
+}
+
+class DashboardSummary {
+  const DashboardSummary({
+    required this.from,
+    required this.to,
+    required this.totalOrders,
+    required this.paidOrders,
+    required this.revenue,
+    required this.averageOrderValue,
+    required this.newCustomers,
+    required this.cancelledOrders,
+    required this.lowStockVariants,
+    required this.ordersByStatus,
+    required this.dailyRevenue,
+    required this.revenueDefinition,
+  });
+
+  final DateTime from;
+  final DateTime to;
+  final int totalOrders;
+  final int paidOrders;
+  final double revenue;
+  final double averageOrderValue;
+  final int newCustomers;
+  final int cancelledOrders;
+  final int lowStockVariants;
+  final Map<OrderStatus, int> ordersByStatus;
+  final List<DailyRevenue> dailyRevenue;
+  final String revenueDefinition;
+
+  factory DashboardSummary.fromJson(Json json) => DashboardSummary(
+        from: toDate(json['from']),
+        to: toDate(json['to']),
+        totalOrders: toInt(json['totalOrders']),
+        paidOrders: toInt(json['paidOrders']),
+        revenue: toDouble(json['revenue']),
+        averageOrderValue: toDouble(json['averageOrderValue']),
+        newCustomers: toInt(json['newCustomers']),
+        cancelledOrders: toInt(json['cancelledOrders']),
+        lowStockVariants: toInt(json['lowStockVariants']),
+        ordersByStatus: {
+          for (final e in (json['ordersByStatus'] as List? ?? []))
+            parseOrderStatus((e as Json)['status']): toInt(e['count']),
+        },
+        dailyRevenue: toList(json['dailyRevenue'], DailyRevenue.fromJson),
+        revenueDefinition: '${json['revenueDefinition']}',
+      );
+}
+
+class OrderReportRow {
+  const OrderReportRow(this.group, this.orderCount, this.totalAmount, this.paidAmount);
+
+  final String group;
+  final int orderCount;
+  final double totalAmount;
+  final double paidAmount;
+
+  factory OrderReportRow.fromJson(Json json) =>
+      OrderReportRow('${json['group']}', toInt(json['orderCount']), toDouble(json['totalAmount']), toDouble(json['paidAmount']));
+}
+
+class OrderReport {
+  const OrderReport(this.groupBy, this.rows, this.totalOrders, this.totalAmount);
+
+  final String groupBy;
+  final List<OrderReportRow> rows;
+  final int totalOrders;
+  final double totalAmount;
+
+  factory OrderReport.fromJson(Json json) =>
+      OrderReport('${json['groupBy']}', toList(json['rows'], OrderReportRow.fromJson), toInt(json['totalOrders']), toDouble(json['totalAmount']));
+}
+
+class TopProduct {
+  const TopProduct({required this.rank, required this.productId, required this.productName, this.imageUrl, required this.quantitySold, required this.revenue});
+
+  final int rank;
+  final int productId;
+  final String productName;
+  final String? imageUrl;
+  final int quantitySold;
+  final double revenue;
+
+  factory TopProduct.fromJson(Json json) => TopProduct(
+        rank: toInt(json['rank']),
+        productId: toInt(json['productId']),
+        productName: '${json['productName']}',
+        imageUrl: json['imageUrl'] as String?,
+        quantitySold: toInt(json['quantitySold']),
+        revenue: toDouble(json['revenue']),
       );
 }

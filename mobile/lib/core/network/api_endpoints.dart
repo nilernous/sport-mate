@@ -69,4 +69,7 @@ class ApiEndpoints {
   static String adminUserRole(int id) => '/admin/users/$id/role';
   static const adminCoupons = '/admin/coupons';
   static String adminCoupon(int id) => '/admin/coupons/$id';
+  static const adminDashboard = '/admin/dashboard/summary';
+  static const adminOrderReport = '/admin/reports/orders';
+  static const adminTopProducts = '/admin/reports/top-products';
 }

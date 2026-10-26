@@ -219,3 +219,24 @@ public class StockMovementQuery : PageQuery
     public DateOnly? From { get; init; }
     public DateOnly? To { get; init; }
 }
+
+public class ReportRangeQuery
+{
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+}
+
+public class OrderReportQuery : ReportRangeQuery
+{
+    public OrderStatus? Status { get; init; }
+
+    /// <summary>day | status</summary>
+    [RegularExpression("^(?i)(day|status)$", ErrorMessage = "groupBy must be day or status.")]
+    public string? GroupBy { get; init; }
+}
+
+public class TopProductsQuery : ReportRangeQuery
+{
+    [Range(1, 50)]
+    public int Limit { get; init; } = 10;
+}

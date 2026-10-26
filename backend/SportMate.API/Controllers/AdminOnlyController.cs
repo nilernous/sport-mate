@@ -11,7 +11,7 @@ namespace SportMate.API.Controllers;
 /// <summary>Users, coupons and reports. Admin only; Staff receive 403 (BR-005, BR-067).</summary>
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.Admin)]
-public class AdminOnlyController(UserAdminService users, CouponService coupons) : ApiControllerBase
+public class AdminOnlyController(UserAdminService users, CouponService coupons, ReportService reports) : ApiControllerBase
 {
     // ---------- Users ----------
 
@@ -71,4 +71,21 @@ public class AdminOnlyController(UserAdminService users, CouponService coupons) 
     [HttpDelete("coupons/{id:int}")]
     public async Task<ActionResult<DeleteResultDto>> DeleteCoupon(int id, CancellationToken ct) =>
         Ok(await coupons.DeleteAsync(id, ct));
+
+    // ---------- Reports ----------
+
+    /// <summary>UC-076 Sales and order dashboard. Defaults to the last 30 days.</summary>
+    [HttpGet("dashboard/summary")]
+    public async Task<ActionResult<DashboardSummaryDto>> Dashboard([FromQuery] ReportRangeQuery query, CancellationToken ct) =>
+        Ok(await reports.GetDashboardAsync(query, ct));
+
+    /// <summary>UC-077 Order report grouped by day or status.</summary>
+    [HttpGet("reports/orders")]
+    public async Task<ActionResult<OrderReportDto>> OrderReport([FromQuery] OrderReportQuery query, CancellationToken ct) =>
+        Ok(await reports.GetOrderReportAsync(query, ct));
+
+    /// <summary>UC-078 Best-selling products.</summary>
+    [HttpGet("reports/top-products")]
+    public async Task<ActionResult<TopProductsReportDto>> TopProducts([FromQuery] TopProductsQuery query, CancellationToken ct) =>
+        Ok(await reports.GetTopProductsAsync(query, ct));
 }

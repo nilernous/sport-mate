@@ -140,3 +140,22 @@ public record ProductReviewsDto(ReviewSummaryDto Summary, PagedResult<ReviewDto>
 public record MyReviewStatusDto(bool CanReview, string? Reason, ReviewDto? Review);
 
 public record WishlistItemDto(int ProductId, string Name, decimal Price, string? ImageUrl, bool InStock, bool IsActive, DateTime AddedAt);
+
+// ---------- Reports ----------
+
+public record StatusCountDto(OrderStatus Status, int Count);
+
+public record DashboardSummaryDto(
+    DateOnly From, DateOnly To, int TotalOrders, int PaidOrders, decimal Revenue, decimal AverageOrderValue,
+    int NewCustomers, int CancelledOrders, int LowStockVariants, IReadOnlyList<StatusCountDto> OrdersByStatus,
+    IReadOnlyList<DailyRevenueDto> DailyRevenue, string RevenueDefinition);
+
+public record DailyRevenueDto(DateOnly Date, int Orders, decimal Revenue);
+
+public record OrderReportRowDto(string Group, int OrderCount, decimal TotalAmount, decimal PaidAmount);
+
+public record OrderReportDto(DateOnly From, DateOnly To, string GroupBy, IReadOnlyList<OrderReportRowDto> Rows, int TotalOrders, decimal TotalAmount);
+
+public record TopProductDto(int Rank, int ProductId, string ProductName, string? ImageUrl, int QuantitySold, decimal Revenue);
+
+public record TopProductsReportDto(DateOnly From, DateOnly To, IReadOnlyList<TopProductDto> Products, string Definition);

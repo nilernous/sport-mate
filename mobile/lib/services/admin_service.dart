@@ -174,6 +174,26 @@ class AdminService {
       : await _api.put<Json>(ApiEndpoints.adminCoupon(id), data: data));
 
   Future<DeleteResult> deleteCoupon(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminCoupon(id)));
+
+  // ---------- Reports (Admin) ----------
+
+  Map<String, dynamic> _range(DateTime? from, DateTime? to) => {
+        'from': from == null ? null : _date(from),
+        'to': to == null ? null : _date(to),
+      };
+
+  String _date(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<DashboardSummary> dashboard({DateTime? from, DateTime? to}) async =>
+      DashboardSummary.fromJson(await _api.get<Json>(ApiEndpoints.adminDashboard, query: _range(from, to)));
+
+  Future<OrderReport> orderReport({DateTime? from, DateTime? to, String groupBy = 'status'}) async =>
+      OrderReport.fromJson(await _api.get<Json>(ApiEndpoints.adminOrderReport, query: {..._range(from, to), 'groupBy': groupBy}));
+
+  Future<List<TopProduct>> topProducts({DateTime? from, DateTime? to, int limit = 10}) async {
+    final json = await _api.get<Json>(ApiEndpoints.adminTopProducts, query: {..._range(from, to), 'limit': limit});
+    return toList(json['products'], TopProduct.fromJson);
+  }
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));
