@@ -3,10 +3,7 @@
 Sportswear e-commerce mobile app (PRM392). Customers browse, buy and review sports gear; Staff and
 Admin run the shop from an Admin Panel inside the same app.
 
-> **This branch contains Iterations 1 and 2** (61 features, see `docs/specs/Sport_Mate - Features.csv`).
-> On top of Iteration 1 it adds address management, variant editing, inventory, order history and
-> cancellation, staff order processing, payments and coupons. User management, product images,
-> reviews and reports come in Iteration 3 (`release/iter-3`).
+> **This branch contains Iterations 1, 2 and 3**: all 78 features in `docs/specs/Sport_Mate - Features.csv`.
 
 | Part | Stack |
 |---|---|
@@ -82,10 +79,10 @@ Demo coupons: `WELCOME10`, `SALE50K`, `RUN15`, `EXPIRED20`.
 
 | Role | Can do |
 |---|---|
-| Guest | Browse, search, filter and sort products; register and sign in |
-| Customer | Profile, addresses, cart, checkout (COD / bank transfer, coupons), orders, wishlist |
-| Staff | Catalog, inventory, order processing, payment confirmation |
-| Admin | Everything Staff can do, plus coupons |
+| Guest | Browse, search, filter and sort products; read reviews; register and sign in |
+| Customer | Profile, addresses, cart, checkout (COD / bank transfer), orders, wishlist, reviews |
+| Staff | Catalog, inventory, order processing, payment confirmation, review moderation |
+| Admin | Everything Staff can do, plus users and roles, coupons, dashboard and reports |
 
 Staff and Admin share the `/admin/*` API endpoints, and the app shows or hides features by role.
 The API enforces every permission. Full details are in
