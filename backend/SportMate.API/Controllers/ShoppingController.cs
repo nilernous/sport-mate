@@ -44,15 +44,20 @@ public class CartController(CartService cart) : ApiControllerBase
 [Authorize(Roles = Roles.Customer)]
 public class CheckoutController(OrderService orders) : ApiControllerBase
 {
-    /// <summary>UC-051 Preview totals. Nothing is saved.</summary>
+    /// <summary>UC-051 / UC-066 / UC-067 Preview totals, optionally with a coupon. Nothing is saved.</summary>
     [HttpPost("checkout/preview")]
     public async Task<ActionResult<CheckoutPreviewDto>> Preview(CheckoutPreviewRequest request, CancellationToken ct) =>
         Ok(await orders.PreviewAsync(CurrentUserId, request, ct));
+
+    /// <summary>UC-065 Validate a coupon against the current cart. Does not consume usage.</summary>
+    [HttpPost("coupons/validate")]
+    public async Task<ActionResult<CouponCheckDto>> ValidateCoupon(ValidateCouponRequest request, CancellationToken ct) =>
+        Ok(await orders.ValidateCouponAsync(CurrentUserId, request.Code, ct));
 }
 
 [Route("api/v1/orders")]
 [Authorize(Roles = Roles.Customer)]
-public class OrdersController(OrderService orders) : ApiControllerBase
+public class OrdersController(OrderService orders, PaymentService payments) : ApiControllerBase
 {
     /// <summary>
     /// UC-052 Place an order from the cart. Send an <c>Idempotency-Key</c> header to make retries safe:
@@ -63,6 +68,31 @@ public class OrdersController(OrderService orders) : ApiControllerBase
         PlaceOrderRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
     {
         var (order, created) = await orders.PlaceOrderAsync(CurrentUserId, request, idempotencyKey, ct);
-        return created ? StatusCode(StatusCodes.Status201Created, order) : Ok(order);
+        return created ? CreatedAtAction(nameof(Get), new { id = order.Id }, order) : Ok(order);
     }
+
+    /// <summary>UC-053 Own order history.</summary>
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<OrderSummaryDto>>> List([FromQuery] OrderQuery query, CancellationToken ct) =>
+        Ok(await orders.ListOwnAsync(CurrentUserId, query, ct));
+
+    /// <summary>UC-054 Own order details.</summary>
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<OrderDetailDto>> Get(int id, CancellationToken ct) =>
+        Ok(await orders.GetOwnAsync(CurrentUserId, id, ct));
+
+    /// <summary>UC-055 Cancel an own order while it is Pending or Confirmed.</summary>
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<OrderDetailDto>> Cancel(int id, CancelOrderRequest? request, CancellationToken ct) =>
+        Ok(await orders.CancelOwnAsync(CurrentUserId, id, request?.Reason, ct));
+
+    /// <summary>UC-058 Payment status of an own order.</summary>
+    [HttpGet("{orderId:int}/payment")]
+    public async Task<ActionResult<PaymentDto>> GetPayment(int orderId, CancellationToken ct) =>
+        Ok(await payments.GetOwnAsync(CurrentUserId, orderId, ct));
+
+    /// <summary>UC-059 Choose COD or bank transfer and get payment instructions.</summary>
+    [HttpPost("{orderId:int}/payment")]
+    public async Task<ActionResult<PaymentDto>> InitiatePayment(int orderId, InitiatePaymentRequest request, CancellationToken ct) =>
+        Ok(await payments.InitiateAsync(CurrentUserId, orderId, request.Method!.Value, ct));
 }

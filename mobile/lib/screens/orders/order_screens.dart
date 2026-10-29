@@ -1,44 +1,178 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../models/order.dart';
 import '../../models/shopping.dart';
+import '../../services/shopping_service.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/paged_list_view.dart';
 import '../../widgets/state_views.dart';
 
-/// Order confirmation shown right after checkout (UC-052). It displays the order returned by
-/// the place-order call, so it needs no extra request.
-class OrderConfirmationScreen extends StatelessWidget {
-  const OrderConfirmationScreen({super.key, this.order});
+final orderDetailProvider = FutureProvider.autoDispose.family<OrderDetail, int>((ref, id) => ref.watch(orderServiceProvider).get(id));
 
-  final OrderDetail? order;
+/// Own order history (UC-053).
+class OrderListScreen extends ConsumerStatefulWidget {
+  const OrderListScreen({super.key});
+
+  @override
+  ConsumerState<OrderListScreen> createState() => _OrderListScreenState();
+}
+
+class _OrderListScreenState extends ConsumerState<OrderListScreen> {
+  OrderStatus? _status;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('My orders')),
+        body: Column(children: [
+          SizedBox(
+            height: 52,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              children: [
+                ChoiceChip(label: const Text('All'), selected: _status == null, onSelected: (_) => setState(() => _status = null)),
+                for (final s in OrderStatus.values) ...[
+                  const SizedBox(width: 8),
+                  ChoiceChip(label: Text(s.label), selected: _status == s, onSelected: (_) => setState(() => _status = s)),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: PagedListView<OrderSummary>(
+              queryKey: _status,
+              fetch: (page) => ref.read(orderServiceProvider).list(status: _status, page: page),
+              emptyMessage: 'You have no orders yet.',
+              emptyIcon: Icons.receipt_long_outlined,
+              itemBuilder: (context, o, reload) => OrderSummaryCard(
+                order: o,
+                onTap: () async {
+                  await context.push('/orders/${o.id}');
+                  reload();
+                },
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
+class OrderSummaryCard extends StatelessWidget {
+  const OrderSummaryCard({super.key, required this.order, required this.onTap, this.showCustomer = false});
+
+  final OrderSummary order;
+  final VoidCallback onTap;
+  final bool showCustomer;
 
   @override
   Widget build(BuildContext context) {
-    final o = order;
+    final theme = Theme.of(context);
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            if (!showCustomer) ...[AppImage(order.firstItemImageUrl, width: 64, height: 64), const SizedBox(width: 12)],
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text('#${order.orderCode}', style: theme.textTheme.titleSmall)),
+                  StatusChip.order(order.status),
+                ]),
+                const SizedBox(height: 4),
+                Text(
+                  showCustomer
+                      ? '${order.customerName} · ${order.customerEmail}'
+                      : '${order.firstItemName ?? ''}${order.itemCount > 1 ? ' and more' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Text(formatVnd(order.totalAmount), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  if (order.paymentStatus != null) StatusChip.payment(order.paymentStatus!),
+                  const Spacer(),
+                  Text(formatDateTime(order.createdAt), style: theme.textTheme.labelSmall),
+                ]),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Own order details, cancellation and payment (UC-054, UC-055, UC-058, UC-059).
+class OrderDetailScreen extends ConsumerWidget {
+  const OrderDetailScreen({super.key, required this.orderId, this.justPlaced = false});
+
+  final int orderId;
+  final bool justPlaced;
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    final reason = await showDialog<String>(context: context, builder: (_) => const _CancelDialog());
+    if (reason == null || !context.mounted) return;
+    final ok = await runGuarded(context, () => ref.read(orderServiceProvider).cancel(orderId, reason: reason.isEmpty ? null : reason),
+        success: 'Order cancelled');
+    if (ok) ref.invalidate(orderDetailProvider(orderId));
+  }
+
+  Future<void> _changePayment(BuildContext context, WidgetRef ref, PaymentMethod method) async {
+    final ok = await runGuarded(context, () => ref.read(orderServiceProvider).choosePaymentMethod(orderId, method),
+        success: 'Payment method updated');
+    if (ok) ref.invalidate(orderDetailProvider(orderId));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final order = ref.watch(orderDetailProvider(orderId));
     return Scaffold(
       appBar: AppBar(
-        title: Text(o == null ? 'Order placed' : '#${o.orderCode}'),
-        leading: IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => context.go('/home')),
+        title: Text(order.value == null ? 'Order' : '#${order.value!.orderCode}'),
+        leading: justPlaced ? IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => context.go('/home')) : null,
       ),
-      body: o == null
-          ? EmptyView(
-              message: 'Your order has been placed.',
-              icon: Icons.check_circle_outline,
-              action: FilledButton(onPressed: () => context.go('/home'), child: const Text('Continue shopping')),
-            )
-          : ListView(padding: const EdgeInsets.all(16), children: [
-              const _PlacedBanner(),
-              OrderOverview(order: o),
-              const SizedBox(height: 12),
-              if (o.payment != null) PaymentCard(payment: o.payment!),
-              const SizedBox(height: 12),
-              OrderItemsCard(order: o),
+      body: AsyncValueView(
+        value: order,
+        onRetry: () => ref.invalidate(orderDetailProvider(orderId)),
+        data: (o) => RefreshIndicator(
+          onRefresh: () => ref.refresh(orderDetailProvider(orderId).future),
+          child: ListView(padding: const EdgeInsets.all(16), children: [
+            if (justPlaced) const _PlacedBanner(),
+            OrderOverview(order: o),
+            const SizedBox(height: 12),
+            if (o.payment != null)
+              PaymentCard(
+                payment: o.payment!,
+                orderCode: o.orderCode,
+                onChangeMethod: o.status == OrderStatus.pending && o.payment!.status == PaymentStatus.pending
+                    ? (m) => _changePayment(context, ref, m)
+                    : null,
+              ),
+            const SizedBox(height: 12),
+            OrderItemsCard(order: o),
+            const SizedBox(height: 12),
+            StatusTimeline(history: o.statusHistory),
+            if (o.canCancel) ...[
               const SizedBox(height: 20),
-              FilledButton(onPressed: () => context.go('/home'), child: const Text('Continue shopping')),
-            ]),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                onPressed: () => _cancel(context, ref),
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Cancel order'),
+              ),
+            ],
+          ]),
+        ),
+      ),
     );
   }
 }
@@ -53,16 +187,48 @@ class _PlacedBanner extends StatelessWidget {
         child: const ListTile(
           leading: Icon(Icons.check_circle, color: Colors.green, size: 36),
           title: Text('Order placed!'),
-          subtitle: Text('Thank you for shopping with Sport Mate.'),
+          subtitle: Text('Thank you for shopping with Sport Mate. You can follow your order here.'),
         ),
       );
 }
 
-/// Status, delivery address and totals of an order.
+class _CancelDialog extends StatefulWidget {
+  const _CancelDialog();
+
+  @override
+  State<_CancelDialog> createState() => _CancelDialogState();
+}
+
+class _CancelDialogState extends State<_CancelDialog> {
+  final _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Cancel order?'),
+        content: TextField(controller: _reason, decoration: const InputDecoration(labelText: 'Reason (optional)'), maxLength: 500),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Keep order')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.pop(context, _reason.text.trim()),
+            child: const Text('Cancel order'),
+          ),
+        ],
+      );
+}
+
+/// Status, delivery address and totals of an order (shared with the staff view).
 class OrderOverview extends StatelessWidget {
-  const OrderOverview({super.key, required this.order});
+  const OrderOverview({super.key, required this.order, this.showCustomer = false});
 
   final OrderDetail order;
+  final bool showCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +242,7 @@ class OrderOverview extends StatelessWidget {
             StatusChip.order(order.status),
           ]),
           const Divider(height: 24),
+          if (showCustomer) InfoRow('Customer', order.customerName),
           Text('Deliver to', style: theme.textTheme.labelMedium),
           const SizedBox(height: 4),
           Text('${order.recipientName} · ${order.phoneNumber}', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
@@ -83,6 +250,8 @@ class OrderOverview extends StatelessWidget {
           if ((order.note ?? '').isNotEmpty) ...[const SizedBox(height: 8), Text('Note: ${order.note}', style: theme.textTheme.bodySmall)],
           const Divider(height: 24),
           InfoRow('Subtotal', formatVnd(order.subtotal)),
+          if (order.discountAmount > 0)
+            InfoRow('Discount${order.couponCode == null ? '' : ' (${order.couponCode})'}', '-${formatVnd(order.discountAmount)}', valueColor: Colors.green.shade700),
           InfoRow('Shipping (${order.shippingMethod.apiName})', order.shippingFee == 0 ? 'Free' : formatVnd(order.shippingFee)),
           InfoRow('Total', formatVnd(order.totalAmount), bold: true),
         ]),
@@ -113,9 +282,12 @@ class OrderItemsCard extends StatelessWidget {
 }
 
 class PaymentCard extends StatelessWidget {
-  const PaymentCard({super.key, required this.payment});
+  const PaymentCard({super.key, required this.payment, required this.orderCode, this.onChangeMethod, this.actions});
 
   final Payment payment;
+  final String orderCode;
+  final void Function(PaymentMethod)? onChangeMethod;
+  final Widget? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +319,17 @@ class PaymentCard extends StatelessWidget {
             _CopyRow('Amount', bank.amount.toStringAsFixed(0), display: formatVnd(bank.amount)),
             _CopyRow('Transfer content', bank.transferContent),
           ],
+          if (onChangeMethod != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => onChangeMethod!(payment.method == PaymentMethod.cod ? PaymentMethod.bankTransfer : PaymentMethod.cod),
+                child: Text(payment.method == PaymentMethod.cod ? 'Pay by bank transfer instead' : 'Pay on delivery instead'),
+              ),
+            ),
+          ],
+          if (actions != null) ...[const SizedBox(height: 8), actions!],
         ]),
       ),
     );
@@ -174,4 +357,29 @@ class _CopyRow extends StatelessWidget {
           },
         ),
       ]);
+}
+
+class StatusTimeline extends StatelessWidget {
+  const StatusTimeline({super.key, required this.history});
+
+  final List<StatusChange> history;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('History', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final h in history.reversed)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.circle, size: 12),
+                title: Text(h.toStatus.label),
+                subtitle: Text([formatDateTime(h.changedAt), if (h.changedBy != null) h.changedBy!, if ((h.note ?? '').isNotEmpty) h.note!].join(' · ')),
+              ),
+          ]),
+        ),
+      );
 }

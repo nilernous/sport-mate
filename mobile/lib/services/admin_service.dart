@@ -2,10 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
 import '../core/network/api_endpoints.dart';
+import '../models/admin.dart';
 import '../models/catalog.dart';
 import '../models/common.dart';
+import '../models/order.dart';
 
-/// Staff & Admin catalog operations on the shared /admin/* endpoints.
+/// Staff & Admin operations on the shared /admin/* endpoints. Admin-only calls
+/// (coupons) are rejected with 403 for Staff by the API.
 class AdminService {
   AdminService(this._api);
 
@@ -53,6 +56,65 @@ class AdminService {
 
   Future<Variant> createVariant(int productId, Json data) async =>
       Variant.fromJson(await _api.post<Json>(ApiEndpoints.adminProductVariants(productId), data: data));
+
+  Future<Variant> updateVariant(int id, Json data) async => Variant.fromJson(await _api.put<Json>(ApiEndpoints.adminVariant(id), data: data));
+
+  Future<DeleteResult> deleteVariant(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminVariant(id)));
+
+  // ---------- Inventory ----------
+
+  Future<Paged<InventoryItem>> inventory({String? keyword, int? maxStock, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminInventory, query: {'keyword': keyword, 'maxStock': maxStock, 'page': page, 'pageSize': 30}),
+        InventoryItem.fromJson,
+      );
+
+  Future<InventoryItem> adjustStock(int variantId, int quantityChange, String reason) async => InventoryItem.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminVariantStock(variantId), data: {'quantityChange': quantityChange, 'reason': reason}));
+
+  Future<Paged<StockMovement>> movements({int? variantId, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminInventoryMovements, query: {'variantId': variantId, 'page': page, 'pageSize': 30}),
+        StockMovement.fromJson,
+      );
+
+  // ---------- Orders & payments ----------
+
+  Future<Paged<OrderSummary>> orders({String? keyword, OrderStatus? status, PaymentStatus? paymentStatus, int page = 1}) async =>
+      Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminOrders, query: {
+          'keyword': keyword,
+          'status': status?.apiName,
+          'paymentStatus': paymentStatus?.apiName,
+          'page': page,
+          'pageSize': 20,
+        }),
+        OrderSummary.fromJson,
+      );
+
+  Future<OrderDetail> order(int id) async => OrderDetail.fromJson(await _api.get<Json>(ApiEndpoints.adminOrder(id)));
+
+  Future<OrderDetail> updateOrderStatus(int id, OrderStatus status, {String? note}) async =>
+      OrderDetail.fromJson(await _api.patch<Json>(ApiEndpoints.adminOrderStatus(id), data: {'status': status.apiName, 'note': note}));
+
+  Future<Payment> confirmTransfer(int paymentId, double amount, String reference, {String? note}) async => Payment.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminPaymentConfirm(paymentId), data: {'amount': amount, 'transferReference': reference, 'note': note}));
+
+  Future<Payment> updatePaymentStatus(int paymentId, PaymentStatus status, {String? note}) async => Payment.fromJson(
+      await _api.patch<Json>(ApiEndpoints.adminPaymentStatus(paymentId), data: {'status': status.apiName, 'note': note}));
+
+  // ---------- Coupons (Admin) ----------
+
+  Future<Paged<Coupon>> coupons({String? keyword, int page = 1}) async => Paged.fromJson(
+        await _api.get<Json>(ApiEndpoints.adminCoupons, query: {'keyword': keyword, 'page': page, 'pageSize': 50}),
+        Coupon.fromJson,
+      );
+
+  Future<Coupon> coupon(int id) async => Coupon.fromJson(await _api.get<Json>(ApiEndpoints.adminCoupon(id)));
+
+  Future<Coupon> saveCoupon(int? id, Json data) async => Coupon.fromJson(id == null
+      ? await _api.post<Json>(ApiEndpoints.adminCoupons, data: data)
+      : await _api.put<Json>(ApiEndpoints.adminCoupon(id), data: data));
+
+  Future<DeleteResult> deleteCoupon(int id) async => DeleteResult.fromJson(await _api.delete<Json>(ApiEndpoints.adminCoupon(id)));
 }
 
 final adminServiceProvider = Provider((ref) => AdminService(ref.watch(apiClientProvider)));

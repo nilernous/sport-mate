@@ -13,6 +13,7 @@ class ApiEndpoints {
   static const me = '/users/me';
   static const myPassword = '/users/me/password';
   static const myAddresses = '/users/me/addresses';
+  static String myAddress(int id) => '/users/me/addresses/$id';
   static const myWishlist = '/users/me/wishlist';
   static const myWishlistItems = '/users/me/wishlist/items';
   static String myWishlistItem(int productId) => '/users/me/wishlist/items/$productId';
@@ -24,12 +25,16 @@ class ApiEndpoints {
   static const productFilters = '/products/filters';
   static String product(int id) => '/products/$id';
 
-  // Cart, checkout, orders
+  // Cart, checkout, orders, payments
   static const cart = '/cart';
   static const cartItems = '/cart/items';
   static String cartItem(int id) => '/cart/items/$id';
   static const checkoutPreview = '/checkout/preview';
+  static const validateCoupon = '/coupons/validate';
   static const orders = '/orders';
+  static String order(int id) => '/orders/$id';
+  static String cancelOrder(int id) => '/orders/$id/cancel';
+  static String orderPayment(int id) => '/orders/$id/payment';
 
   // Staff & Admin (shared /admin/* paths)
   static const adminCategories = '/admin/categories';
@@ -40,4 +45,17 @@ class ApiEndpoints {
   static String adminProduct(int id) => '/admin/products/$id';
   static String adminProductStatus(int id) => '/admin/products/$id/status';
   static String adminProductVariants(int id) => '/admin/products/$id/variants';
+  static String adminVariant(int id) => '/admin/variants/$id';
+  static String adminVariantStock(int id) => '/admin/variants/$id/stock';
+  static const adminInventory = '/admin/inventory';
+  static const adminInventoryMovements = '/admin/inventory/movements';
+  static const adminOrders = '/admin/orders';
+  static String adminOrder(int id) => '/admin/orders/$id';
+  static String adminOrderStatus(int id) => '/admin/orders/$id/status';
+  static String adminPaymentConfirm(int id) => '/admin/payments/$id/confirm';
+  static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
+
+  // Admin only
+  static const adminCoupons = '/admin/coupons';
+  static String adminCoupon(int id) => '/admin/coupons/$id';
 }
