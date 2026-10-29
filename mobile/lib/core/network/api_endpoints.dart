@@ -24,6 +24,9 @@ class ApiEndpoints {
   static const products = '/products';
   static const productFilters = '/products/filters';
   static String product(int id) => '/products/$id';
+  static String productReviews(int id) => '/products/$id/reviews';
+  static String myProductReview(int id) => '/products/$id/reviews/me';
+  static String review(int id) => '/reviews/$id';
 
   // Cart, checkout, orders, payments
   static const cart = '/cart';
@@ -47,6 +50,8 @@ class ApiEndpoints {
   static String adminProductVariants(int id) => '/admin/products/$id/variants';
   static String adminVariant(int id) => '/admin/variants/$id';
   static String adminVariantStock(int id) => '/admin/variants/$id/stock';
+  static String adminProductImages(int id) => '/admin/products/$id/images';
+  static String adminImage(int id) => '/admin/images/$id';
   static const adminInventory = '/admin/inventory';
   static const adminInventoryMovements = '/admin/inventory/movements';
   static const adminOrders = '/admin/orders';
@@ -54,8 +59,17 @@ class ApiEndpoints {
   static String adminOrderStatus(int id) => '/admin/orders/$id/status';
   static String adminPaymentConfirm(int id) => '/admin/payments/$id/confirm';
   static String adminPaymentStatus(int id) => '/admin/payments/$id/status';
+  static const adminReviews = '/admin/reviews';
+  static String adminReviewStatus(int id) => '/admin/reviews/$id/status';
 
   // Admin only
+  static const adminUsers = '/admin/users';
+  static String adminUser(int id) => '/admin/users/$id';
+  static String adminUserStatus(int id) => '/admin/users/$id/status';
+  static String adminUserRole(int id) => '/admin/users/$id/role';
   static const adminCoupons = '/admin/coupons';
   static String adminCoupon(int id) => '/admin/coupons/$id';
+  static const adminDashboard = '/admin/dashboard/summary';
+  static const adminOrderReport = '/admin/reports/orders';
+  static const adminTopProducts = '/admin/reports/top-products';
 }

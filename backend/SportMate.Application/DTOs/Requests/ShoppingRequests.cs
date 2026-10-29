@@ -161,6 +161,27 @@ public class ValidateCouponRequest
     public string Code { get; init; } = string.Empty;
 }
 
+public class ReviewRequest
+{
+    [Range(1, 5)]
+    public int Rating { get; init; }
+
+    [StringLength(1000)]
+    public string? Comment { get; init; }
+}
+
+public class ModerateReviewRequest
+{
+    [Required, EnumDataType(typeof(ReviewStatus))]
+    public ReviewStatus? Status { get; init; }
+}
+
+public class AdminReviewQuery : PageQuery
+{
+    public ReviewStatus? Status { get; init; }
+    public int? ProductId { get; init; }
+}
+
 public class AddWishlistItemRequest
 {
     [Range(1, int.MaxValue)]
@@ -197,4 +218,25 @@ public class StockMovementQuery : PageQuery
     public StockMovementType? Type { get; init; }
     public DateOnly? From { get; init; }
     public DateOnly? To { get; init; }
+}
+
+public class ReportRangeQuery
+{
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+}
+
+public class OrderReportQuery : ReportRangeQuery
+{
+    public OrderStatus? Status { get; init; }
+
+    /// <summary>day | status</summary>
+    [RegularExpression("^(?i)(day|status)$", ErrorMessage = "groupBy must be day or status.")]
+    public string? GroupBy { get; init; }
+}
+
+public class TopProductsQuery : ReportRangeQuery
+{
+    [Range(1, 50)]
+    public int Limit { get; init; } = 10;
 }

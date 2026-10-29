@@ -8,13 +8,14 @@ using SportMate.Application.Services;
 
 namespace SportMate.API.Controllers;
 
-/// <summary>Inventory, orders and payments, shared by Staff and Admin.</summary>
+/// <summary>Inventory, orders, payments and review moderation, shared by Staff and Admin.</summary>
 [Route("api/v1/admin")]
 [Authorize(Roles = Roles.StaffOrAdmin)]
 public class AdminOperationsController(
     InventoryService inventory,
     OrderService orders,
-    PaymentService payments) : ApiControllerBase
+    PaymentService payments,
+    ReviewService reviews) : ApiControllerBase
 {
     // ---------- Inventory ----------
 
@@ -64,4 +65,16 @@ public class AdminOperationsController(
     [HttpPatch("payments/{paymentId:int}/status")]
     public async Task<ActionResult<PaymentDto>> UpdatePaymentStatus(int paymentId, UpdatePaymentStatusRequest request, CancellationToken ct) =>
         Ok(await payments.UpdateStatusAsync(CurrentUserId, paymentId, request.Status!.Value, request.Note, ct));
+
+    // ---------- Reviews ----------
+
+    /// <summary>UC-069 All reviews, any status, for moderation.</summary>
+    [HttpGet("reviews")]
+    public async Task<ActionResult<PagedResult<ReviewDto>>> ListReviews([FromQuery] AdminReviewQuery query, CancellationToken ct) =>
+        Ok(await reviews.ListForModerationAsync(query, ct));
+
+    /// <summary>UC-072 Approve, hide or reject a review.</summary>
+    [HttpPatch("reviews/{id:int}/status")]
+    public async Task<ActionResult<ReviewDto>> ModerateReview(int id, ModerateReviewRequest request, CancellationToken ct) =>
+        Ok(await reviews.ModerateAsync(CurrentUserId, id, request.Status!.Value, ct));
 }

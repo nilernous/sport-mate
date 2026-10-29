@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/catalog.dart';
+import '../models/review.dart';
 import '../services/product_service.dart';
+import '../services/review_service.dart';
 
 final categoriesProvider = FutureProvider<List<Category>>((ref) => ref.watch(productServiceProvider).categories());
 
@@ -15,3 +17,6 @@ final topRatedProvider = FutureProvider.autoDispose<List<ProductSummary>>((ref) 
 
 final productDetailProvider =
     FutureProvider.autoDispose.family<ProductDetail, int>((ref, id) => ref.watch(productServiceProvider).get(id));
+
+final productReviewsPreviewProvider = FutureProvider.autoDispose.family<ProductReviews, int>(
+    (ref, id) => ref.watch(reviewServiceProvider).forProduct(id, pageSize: 3));

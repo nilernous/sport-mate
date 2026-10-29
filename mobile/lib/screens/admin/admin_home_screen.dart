@@ -14,16 +14,20 @@ class _AdminItem {
   final bool adminOnly;
 }
 
-/// Admin Panel entry. Staff see operational tools only; Admin also sees coupons. The API rejects anything a role may not do.
+/// Admin Panel entry. Staff see operational tools only; Admin also sees dashboard,
+/// coupons and users. The API rejects anything a role may not do.
 class AdminHomeScreen extends ConsumerWidget {
   const AdminHomeScreen({super.key});
 
   static const _items = [
+    _AdminItem(Icons.insights_outlined, 'Dashboard', 'Sales, orders & best sellers', '/admin/dashboard', adminOnly: true),
     _AdminItem(Icons.receipt_long_outlined, 'Orders', 'Process orders & confirm payments', '/admin/orders'),
-    _AdminItem(Icons.inventory_2_outlined, 'Products', 'Products & variants', '/admin/products'),
+    _AdminItem(Icons.inventory_2_outlined, 'Products', 'Products, variants & images', '/admin/products'),
     _AdminItem(Icons.category_outlined, 'Categories & brands', 'Organise the catalog', '/admin/catalog-setup'),
     _AdminItem(Icons.warehouse_outlined, 'Inventory', 'Stock levels & adjustments', '/admin/inventory'),
+    _AdminItem(Icons.rate_review_outlined, 'Reviews', 'Moderate customer reviews', '/admin/reviews'),
     _AdminItem(Icons.local_offer_outlined, 'Coupons', 'Discount codes', '/admin/coupons', adminOnly: true),
+    _AdminItem(Icons.people_outline, 'Users', 'Accounts & roles', '/admin/users', adminOnly: true),
   ];
 
   @override
